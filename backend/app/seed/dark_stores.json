@@ -1,0 +1,9 @@
+{
+  "dark_stores": [
+    {"id": "DS-14", "name": "Amazon Now · Koramangala", "area": "Koramangala", "lat": 12.9300, "lon": 77.6280},
+    {"id": "DS-09", "name": "Amazon Now · Indiranagar", "area": "Indiranagar", "lat": 12.9716, "lon": 77.6120},
+    {"id": "DS-22", "name": "Amazon Now · Whitefield", "area": "Whitefield", "lat": 12.9780, "lon": 77.7400},
+    {"id": "DS-31", "name": "Amazon Now · Jayanagar", "area": "Jayanagar", "lat": 12.9250, "lon": 77.5830},
+    {"id": "DS-05", "name": "Amazon Now · Malleshwaram", "area": "Malleshwaram", "lat": 13.0040, "lon": 77.5710}
+  ]
+}

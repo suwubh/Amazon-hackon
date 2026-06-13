@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from mangum import Mangum
 from .llm import ask_llm
 from . import grading, passport, seed, vrs, healthcard, radar, inspection, pricing, metrics
-from . import size, seller, orders as orders_mod, buyer
+from . import size, seller, orders as orders_mod, buyer, cascade as cascade_mod
 
 app = FastAPI(title="Amazon Second Life API")
 
@@ -108,6 +108,18 @@ class DiagnoseIn(BaseModel):
 def route(body: ItemIn):
     try:
         return vrs.route_item(body.item_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="item not found")
+    except vrs.NeedsGrade:
+        raise HTTPException(status_code=409, detail="grade required")
+
+
+@app.get("/cascade/{item_id}")
+def get_cascade(item_id: str):
+    """Derived terminal-state waterfall (MT8): VRS argmax re-run week-by-week over
+    −5%/wk decay. Pure-Python, no AI. Requires a prior grade (409 otherwise)."""
+    try:
+        return cascade_mod.cascade(item_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="item not found")
     except vrs.NeedsGrade:

@@ -51,6 +51,7 @@ export default function App() {
   const [lane, setLane] = useState("spine");
   const [grade, setGrade] = useState(null);
   const [route, setRoute] = useState(null);
+  const [cascade, setCascade] = useState(null); // MT8 derived waterfall
   const [card, setCard] = useState(null);
   const [radarData, setRadarData] = useState(null);
   const [curve, setCurve] = useState(null);
@@ -103,6 +104,7 @@ export default function App() {
   function resetItemState() {
     setGrade(null);
     setRoute(null);
+    setCascade(null);
     setCard(null);
     setRadarData(null);
     setCurve(null);
@@ -167,6 +169,9 @@ export default function App() {
       const r = await api.routeSafe(item.item_id, forceCached);
       setRoute(r);
       setScreen("route");
+      // Derived terminal-state cascade (MT8) — non-blocking so the route screen
+      // never waits on it; the strip fills in when it lands.
+      api.cascadeSafe(item.item_id, forceCached).then(setCascade).catch(() => {});
     } catch (e) {
       setErr({ message: `Routing failed (${e.detail || e.message}).`, retry: runRoute });
     } finally {
@@ -506,6 +511,7 @@ export default function App() {
         {screen === "route" && route && (
           <RouteScreen
             route={route}
+            cascade={lane === "rto" ? null : cascade}
             building={busy}
             onHealthCard={lane === "rto" ? listRto : buildCard}
             nextLabel={lane === "rto" ? "List for local pickup" : undefined}

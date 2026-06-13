@@ -39,6 +39,8 @@ export const api = {
       },
     }),
   route: (id) => req("/route", { method: "POST", body: { item_id: id } }),
+  // MT8 — derived terminal-state waterfall (pure-Python, no AI). Needs a prior grade.
+  cascade: (id) => req(`/cascade/${id}`),
   healthCard: (id) => req(`/health-card/${id}`),
   sealCheck: (id) => req("/seal-check", { method: "POST", body: { item_id: id } }),
   radar: (asin) => req(`/radar/${asin}`),
@@ -112,6 +114,20 @@ api.priceCurveSafe = async (id) => {
     if (e.status === 409) {
       await api.grade(id, true);
       return api.priceCurve(id);
+    }
+    throw e;
+  }
+};
+
+// The cascade is read after /route on the same warm instance, so the GRADED event
+// is normally present. On a cold-start 409, re-run the grade once (mirrors routeSafe).
+api.cascadeSafe = async (id, forceCached) => {
+  try {
+    return await api.cascade(id);
+  } catch (e) {
+    if (e.status === 409) {
+      await api.grade(id, forceCached);
+      return api.cascade(id);
     }
     throw e;
   }

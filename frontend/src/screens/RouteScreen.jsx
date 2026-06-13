@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import TopBar from "../components/TopBar";
 import { FooterAction } from "../components/ui";
 import { inr, signedInr, useCountUp } from "../lib/format";
@@ -15,7 +15,7 @@ const META = {
 const prettyKey = (k) =>
   k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).replace("Csr", "CSR").replace("Fc", "FC");
 
-export default function RouteScreen({ route, building, onHealthCard, onBack, nextLabel = "Generate Product Health Card", nextHint = "Every figure above sums from a deterministic ledger" }) {
+export default function RouteScreen({ route, cascade, building, onHealthCard, onBack, nextLabel = "Generate Product Health Card", nextHint = "Every figure above sums from a deterministic ledger" }) {
   const paths = [...route.paths].sort((a, b) => b.recovery - a.recovery);
   const winner = route.paths.find((p) => p.winner) || paths[0];
   const warehouse = route.paths.find((p) => p.path === "warehouse_relist");
@@ -53,6 +53,9 @@ export default function RouteScreen({ route, building, onHealthCard, onBack, nex
           ))}
         </div>
       </div>
+
+      {/* MT8 — derived terminal-state cascade */}
+      <CascadeStrip cascade={cascade} />
 
       {/* impact */}
       <div className="px-4 pt-5 pb-2">
@@ -95,6 +98,15 @@ function WinnerCard({ winner }) {
           {winner.note}
           {winner.distance_km != null && ` · nearest ${winner.distance_km} km`}
         </p>
+      )}
+      {winner.dark_store && (
+        <div className="mt-2.5 inline-flex items-center gap-2 rounded-lg bg-sl-mint/60 ring-1 ring-sl-green/30 px-2.5 py-1.5">
+          <span className="text-[14px]">🏪</span>
+          <span className="text-[12px] leading-tight text-sl-green-deep">
+            Lists open-box at <span className="font-700">{winner.dark_store.name}</span>
+            <span className="text-sl-green-deep/70"> · {winner.dark_store.distance_km} km</span>
+          </span>
+        </div>
       )}
       {winner.breakdown && <Breakdown breakdown={winner.breakdown} total={winner.recovery} />}
     </div>
@@ -183,6 +195,60 @@ function Breakdown({ breakdown, total, compact }) {
         <span className="tnum font-800" style={{ color: total >= 0 ? "var(--color-pos)" : "var(--color-neg)" }}>
           {signedInr(total)}
         </span>
+      </div>
+    </div>
+  );
+}
+
+// The derived value cascade: the same VRS argmax re-run week-by-week as the price
+// decays. Each tier is where the money math sends the item next — the visible answer
+// to "what happens to items that don't sell at the local open-box node?"
+function CascadeStrip({ cascade }) {
+  if (!cascade || !cascade.tiers || cascade.tiers.length === 0) return null;
+  return (
+    <div className="px-4 pt-6">
+      <p className="text-[11px] font-700 uppercase tracking-wider text-sl-muted mb-1">
+        If it doesn't sell locally — the value cascade
+      </p>
+      <p className="text-[11.5px] text-sl-muted mb-3 leading-snug">
+        Derived live: the engine re-runs the same argmax each week as the price decays{" "}
+        {cascade.decay_pct_per_week}%/wk. No fixed timeline — each step is where the math sends it next.
+      </p>
+      <div className="flex items-stretch gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+        {cascade.tiers.map((t, i) => (
+          <Fragment key={t.week}>
+            {i > 0 && (
+              <span className="self-center shrink-0 text-sl-muted">
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none">
+                  <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            )}
+            <TierCard t={t} delay={i * 90} />
+          </Fragment>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TierCard({ t, delay }) {
+  const terminal = !!t.terminal;
+  return (
+    <div
+      className={`shrink-0 min-w-[148px] rounded-xl ring-1 p-2.5 anim-fade-up ${
+        terminal ? "bg-sl-mint/50 ring-sl-green/45" : "bg-white ring-sl-line"
+      }`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-800 tracking-wide text-sl-muted">WEEK {t.week}</span>
+        {terminal && <span className="text-[9px] font-800 text-sl-green-deep tracking-wide">TERMINAL</span>}
+      </div>
+      <p className="mt-1 text-[12px] font-700 text-sl-ink leading-tight">{t.label}</p>
+      <div className="mt-1.5 flex items-baseline gap-1.5">
+        <span className="font-display font-800 text-[16px] tnum text-sl-green-deep">{signedInr(t.net)}</span>
+        {t.price > 0 && <span className="text-[10.5px] text-sl-muted">at {inr(t.price)}</span>}
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 Everything the demo needs ships in this package so a cold Lambda always has it.
 """
 import json
+import math
 from pathlib import Path
 
 SEED_DIR = Path(__file__).parent
@@ -26,6 +27,9 @@ with open(SEED_DIR / "seller_catalog.json", encoding="utf-8") as f:
 
 with open(SEED_DIR / "buyer.json", encoding="utf-8") as f:
     BUYER = json.load(f)
+
+with open(SEED_DIR / "dark_stores.json", encoding="utf-8") as f:
+    DARK_STORES = json.load(f)["dark_stores"]
 
 
 def get_item(item_id: str) -> dict | None:
@@ -104,3 +108,29 @@ def order_history(persona: str) -> list[dict] | None:
 def buyer_data(persona: str) -> dict | None:
     """A persona's seeded storefront block (cart + notifications + upi_vpa)."""
     return BUYER.get(persona.lower())
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in km between two lat/lon points."""
+    r = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return r * 2 * math.asin(math.sqrt(a))
+
+
+def nearest_dark_store(item: dict) -> dict | None:
+    """Nearest Amazon Now MFC (open-box node) to an item's location, as
+    {id, name, distance_km}. None if the item has no location."""
+    loc = item.get("location")
+    if not loc:
+        return None
+    best, best_km = None, None
+    for ds in DARK_STORES:
+        km = _haversine_km(loc["lat"], loc["lon"], ds["lat"], ds["lon"])
+        if best_km is None or km < best_km:
+            best, best_km = ds, km
+    if best is None:
+        return None
+    return {"id": best["id"], "name": best["name"], "distance_km": round(best_km, 1)}

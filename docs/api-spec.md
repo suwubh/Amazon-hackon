@@ -55,7 +55,7 @@ Body: `{"item_id": "SL-001"}` (requires a prior grade; `409 {"detail": "grade re
     {"path": "local_p2p", "recovery": 83, "eligible": true, "winner": true,
      "breakdown": {"sale_price": 125, "local_hop": -40, "payment_fee": -2},
      "note": "3 matched buyers within 4 km", "distance_km": 2.7,
-     "dark_store": {"id": "DS-14", "name": "Amazon Now · Koramangala", "distance_km": 2.7}},
+     "dark_store": {"id": "DS-09", "name": "Amazon Now · Indiranagar", "distance_km": 1.9}},
     {"path": "warehouse_relist", "recovery": -129, "eligible": true, "winner": false,
      "breakdown": {"sale_price": 121, "reverse_ship": -120, "inspection": -40, "relist": -60, "fc_handling": -30}},
     {"path": "refurbish", "recovery": 0, "eligible": false, "winner": false, "note": "not economical to refurbish this item"},
@@ -72,20 +72,18 @@ Side effect: appends `ROUTED` event. Recovery figures scale with grade (B target
 
 ## GET /cascade/{item_id}  *(MT8 — derived value cascade)*
 The time-decay tier waterfall, **derived** from the VRS engine — NOT a fixed timer. Re-runs the argmax week-by-week as the −5%/wk decay erodes the resale price; emits a new tier whenever the winning channel changes; terminates at `donate` (CSR) once no monetary path clears the donate credit. Requires a prior grade (`409 {"detail": "grade required"}` otherwise). Pure-Python deterministic — **no AI call, so no cache and nothing that can fail live**. Backed by `cascade.py` (reuses `vrs.py` + `pricing.py`, no new economics).
-→ `200` (illustrative on the monitor SL-002 — channels and nets are computed live by the argmax at each decayed price; a ₹500 shoe yields a shorter waterfall, which is an honest result, not a bug):
+→ `200` (real output for the spine SL-001 at the current cached grade D — channels and nets are computed live by the argmax at each decayed price; depth is an honest function of the LOCKED constants, so a low-MRP ₹500 shoe falls straight from the local open-box node to the donate floor):
 ```json
 {
-  "item_id": "SL-002",
+  "item_id": "SL-001",
   "tiers": [
-    {"week": 0,  "channel": "local_p2p",        "label": "Amazon Now dark store · open-box", "price": 1710, "net": 1632},
-    {"week": 4,  "channel": "warehouse_relist",  "label": "central marketplace",              "price": 1290, "net": 540},
-    {"week": 8,  "channel": "liquidate",         "label": "wholesale / bulk",                 "price": 384,  "net": 364},
-    {"week": 11, "channel": "donate",            "label": "donate · CSR certificate",         "price": 0,    "net": 96, "terminal": true}
+    {"week": 0, "channel": "local_p2p", "label": "Amazon Now dark store · open-box", "price": 125, "net": 83},
+    {"week": 8, "channel": "donate",    "label": "donate · CSR certificate",         "price": 0,   "net": 45, "terminal": true}
   ],
   "decay_pct_per_week": 5
 }
 ```
-Each `channel` is the live VRS winner at that week's decayed price; `net` equals that path's recovery. The frontend renders these as the cascade strip (dark-store → wider → wholesale → liquidate → donate). This is the visible answer to "how are items that DON'T go to a dark store handled?" — they are the tiers the cascade falls through.
+Each `channel` is the live VRS winner at that week's decayed price; `net` equals that path's recovery; `price` is the channel's headline sale line (0 for donate, a credit). The frontend renders these as the cascade strip (dark-store open-box → … → donate). Higher-value/repairable items cascade through more tiers (e.g. SL-006 headphones at grade C: refurbish → donate); the shoe's two-tier fall is the honest result, not a bug. This is the visible answer to "how are items that DON'T sell at the dark store handled?" — they are the tiers the cascade falls through.
 
 ## GET /health-card/{item_id}
 Requires grade + route (`409` otherwise).

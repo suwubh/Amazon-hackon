@@ -62,13 +62,13 @@ def _path(name: str, breakdown: dict[str, int], *, eligible: bool, note: str | N
     return p
 
 
-def route_item(item_id: str) -> dict:
+def grade_for(item_id: str) -> tuple[dict, str, bool]:
+    """Resolve (item, grade, is_sealed_rto) for routing/cascade. A sealed RTO unit
+    is never opened, so it skips grading and routes as factory-new (architecture
+    §3.2); everything else needs a prior delta-grade. Raises NeedsGrade otherwise."""
     item = seed.get_item(item_id)
     if item is None:
         raise KeyError(item_id)
-
-    # A sealed RTO unit is never opened, so it skips grading and routes as
-    # factory-new (architecture §3.2). Everything else needs a delta-grade first.
     seal = passport.latest_event(item_id, "SEAL_CHECKED")
     is_sealed_rto = bool(item.get("rto")) and seal is not None and seal["data"].get("sealed")
     graded = passport.latest_event(item_id, "GRADED")
@@ -78,12 +78,14 @@ def route_item(item_id: str) -> dict:
         grade = "A"
     else:
         raise NeedsGrade(item_id)
+    return item, grade, is_sealed_rto
 
-    mrp, category, age, asin = item["mrp"], item["category"], item["age_months"], item["asin"]
-    buyers = seed.buyers_for_asin(asin, LOCAL_RADIUS_KM)
-    demand_mult = pricing.demand_multiplier(len(buyers))
-    resale = pricing.resale_value(mrp, category, age, grade, demand_mult)
 
+def build_paths(item: dict, grade: str, resale: int, refurb_resale: int,
+                buyers: list[dict], *, is_sealed_rto: bool) -> list[dict]:
+    """Pure VRS path list for a given resale price — no passport writes. Shared by
+    route_item and the cascade, which re-runs this at week-by-week decayed prices."""
+    mrp, category, asin = item["mrp"], item["category"], item["asin"]
     paths: list[dict] = []
 
     # local_p2p — interception before the item ever ships to a warehouse.
@@ -91,7 +93,7 @@ def route_item(item_id: str) -> dict:
     local_eligible = len(buyers) >= 1
     local_sale = round(resale * 0.95)
     local_dist = buyers[0]["distance_km"] if buyers else None
-    paths.append(_path(
+    local = _path(
         "local_p2p",
         {"sale_price": local_sale, "local_hop": -LOCAL_HOP,
          "payment_fee": -round(local_sale * PAYMENT_FEE_PCT)},
@@ -99,7 +101,13 @@ def route_item(item_id: str) -> dict:
         note=(f"{len(near)} matched buyers within {LOCAL_NOTE_KM} km" if local_eligible
               else "no local buyers matched"),
         distance_km=local_dist,
-    ))
+    )
+    # MT8: name the hyperlocal open-box node (nearest Amazon Now MFC).
+    if local_eligible:
+        ds = seed.nearest_dark_store(item)
+        if ds is not None:
+            local["dark_store"] = ds
+    paths.append(local)
 
     # warehouse_relist — the default reverse-logistics route.
     wh_sale = round(resale * 0.92)
@@ -114,7 +122,6 @@ def route_item(item_id: str) -> dict:
     refurb_eligible = (grade in ("C", "D") and resale >= REFURB_MIN_RESALE
                        and category in REPAIR_COST)
     if refurb_eligible:
-        refurb_resale = pricing.resale_value(mrp, category, age, _GRADE_UP[grade], demand_mult)
         paths.append(_path(
             "refurbish",
             {"refurbished_sale": refurb_resale, "repair": -REPAIR_COST[category],
@@ -150,6 +157,22 @@ def route_item(item_id: str) -> dict:
     else:
         paths.append(_path("rto_relist", {}, eligible=False,
                            note="not an RTO item" if not item.get("rto") else "seal not verified"))
+
+    return paths
+
+
+def route_item(item_id: str) -> dict:
+    item, grade, is_sealed_rto = grade_for(item_id)
+
+    mrp, category, age, asin = item["mrp"], item["category"], item["age_months"], item["asin"]
+    buyers = seed.buyers_for_asin(asin, LOCAL_RADIUS_KM)
+    demand_mult = pricing.demand_multiplier(len(buyers))
+    resale = pricing.resale_value(mrp, category, age, grade, demand_mult)
+    refurb_resale = pricing.resale_value(mrp, category, age, _GRADE_UP[grade], demand_mult)
+
+    paths = build_paths(item, grade, resale, refurb_resale, buyers,
+                        is_sealed_rto=is_sealed_rto)
+    local_dist = buyers[0]["distance_km"] if buyers else None
 
     # winner = argmax recovery over eligible paths.
     winner = max((p for p in paths if p["eligible"]), key=lambda p: p["recovery"])
