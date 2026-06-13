@@ -461,9 +461,9 @@ export default function App() {
     setErr(null);
     setBusy(true);
     try {
-      // Grade the uploaded photos (cached floor so it never blocks on a live call);
-      // the grade letter drives the suggested resale price.
-      const g = await api.grade(resellItem.item_id, true, currentImages);
+      // Grade the uploaded photos (respects the LIVE/CACHED toggle; live falls back
+      // to Gemini→cache so it never hard-fails). The grade drives the resale price.
+      const g = await api.grade(resellItem.item_id, forceCached, currentImages);
       const grade = g.grade || "B";
       setResellGrade(grade);
       const q = await api.resellQuote({ item_id: resellItem.item_id, range_km: resellRange, grade });
