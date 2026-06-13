@@ -37,8 +37,9 @@ CHECKLISTS = {
 }
 
 RUBRIC = (
-    "A = like new, indistinguishable from day-0. "
-    "B = light wear: minor scuffs, sole dirt or creasing; clean after a wipe. "
+    "A = same physical condition as day-0 with no new wear; differences limited to "
+    "lighting, camera angle, distance, background, or image quality must NOT lower the grade. "
+    "B = light wear: minor scuffs, sole dirt or creasing; cleans up after a wipe. "
     "C = clearly visible wear or soiling but structurally intact and fully functional "
     "(heavy but cleanable soiling is C, not D). "
     "D = damaged, torn, broken, or missing essential parts."
@@ -121,11 +122,16 @@ def _build_prompt(item: dict, n_catalog: int, n_day0: int, n_current: int) -> st
         f"next {n_day0} = DAY-0 photos of this exact unit taken at delivery; "
         f"last {n_current} = CURRENT photos taken now, at return initiation.\n\n"
         "Compare the CURRENT photos against the CATALOG image and the DAY-0 photos of this unit. Tasks:\n"
-        "1. same_unit: is the CURRENT item physically the same unit as DAY-0 "
-        "(model, colorway, markings, wear pattern, label/serial positions)? Give a confidence 0-1.\n"
-        "2. defects: every visible difference from day-0 condition — name the specific area "
-        "(e.g. 'toe-box-left', 'sole-heel'), describe it, rate severity minor/moderate/major. "
-        "Empty list only if truly indistinguishable from day-0.\n"
+        "1. same_unit: is the CURRENT item physically the same unit and the same product as "
+        "DAY-0/CATALOG (brand, model, colorway, markings, wear pattern, label/serial positions)? "
+        "If it is clearly a different product or not the product at all, set verified=false. "
+        "Give a confidence 0-1.\n"
+        "2. defects: list ONLY genuine physical condition changes from day-0 — new scuffs, "
+        "scratches, stains, soiling, tears, fading, deformation, or missing/added parts. Name the "
+        "specific area (e.g. 'toe-box-left', 'sole-heel'), describe it, rate severity "
+        "minor/moderate/major. Do NOT report differences caused by lighting, camera angle, distance, "
+        "background, shadows, or image quality. If the unit's physical condition matches day-0 once "
+        "those capture differences are ignored, return an empty list.\n"
         f"3. completeness: for each of {json.dumps(checklist)}, say whether it is visibly present "
         "in the CURRENT photos (not visible = false).\n"
         f"4. grade using this rubric strictly: {RUBRIC}\n"
@@ -209,10 +215,24 @@ def grade_item(item_id: str, force_cached: bool = False,
         core = {k: v for k, v in cached.items() if k != "model"}
         source, model = "cached", cached.get("model", PROVIDER_MODEL["bedrock"])
 
+    # Trust gate: a grade is only trustworthy if the model confirmed this is the same
+    # unit/product as day-0. A different product (or a non-product image) must NOT pass
+    # as a clean letter grade — it gets flagged for human review with the reason surfaced.
+    su = core["same_unit"]
+    if not su["verified"]:
+        review_reason = "Could not confirm this is the same product as day-0 — flagged for manual review."
+    elif su["confidence"] < 0.50:
+        review_reason = "Low confidence the item matches day-0 — flagged for manual review."
+    elif core["confidence"] < 0.70:
+        review_reason = "Low overall grading confidence — flagged for manual review."
+    else:
+        review_reason = None
+
     result = {
         "item_id": item_id,
         **core,
-        "needs_human_review": core["confidence"] < 0.70,
+        "needs_human_review": review_reason is not None,
+        "review_reason": review_reason,
         "source": source,
         "model": model,
         "graded_uploaded_photos": graded_uploaded,

@@ -97,7 +97,12 @@ def _ask_gemini_vision(prompt: str, images: list[bytes], system: str,
                        max_tokens: int, temperature: float) -> str:
     from google import genai
     from google.genai import types
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    # Bound the primary call so a hung Gemini request fails over to the Bedrock fallback
+    # well inside the Lambda 30s budget (mirrors the Bedrock connect/read timeouts).
+    client = genai.Client(
+        api_key=os.getenv("GEMINI_API_KEY"),
+        http_options=types.HttpOptions(timeout=18000),  # milliseconds
+    )
     parts = [types.Part.from_bytes(data=b, mime_type="image/jpeg") for b in images]
     parts.append(types.Part.from_text(text=prompt))
     resp = client.models.generate_content(
@@ -107,6 +112,15 @@ def _ask_gemini_vision(prompt: str, images: list[bytes], system: str,
             system_instruction=system,
             max_output_tokens=max_tokens,
             temperature=temperature,
+            # Every vision caller (grade/seal/diagnose) wants a single JSON object.
+            # Native JSON mode guarantees well-formed output — no fences, no prose,
+            # no trailing commas — which the free-text path returned intermittently.
+            response_mime_type="application/json",
+            # Gemini 2.5 Flash is a thinking model: reasoning tokens count against
+            # max_output_tokens, so on harder cases it would exhaust the budget mid-JSON
+            # and return a truncated object. Structured extraction needs no extended
+            # thinking — disable it so the whole budget goes to the JSON (also faster).
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
         ),
     )
     if not resp.text:

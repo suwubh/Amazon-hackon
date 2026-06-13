@@ -5,7 +5,7 @@ Local: `http://localhost:8080`. All endpoints JSON. CORS: app-level via `ALLOWED
 
 **Common errors:** `404 {"detail": "item not found"}` for unknown `item_id`/`asin` · `422` FastAPI validation · `502 {"detail": "ai_unavailable"}` only if both providers fail AND no cache exists (cannot happen for seeded items — every seeded item ships with cached responses).
 
-**AI-backed responses** (`/grade`, `/seal-check`, `/diagnose-listing`) always include `"source": "live-bedrock" | "live-gemini" | "cached"` and `"model"`.
+**AI-backed responses** (`/grade`, `/seal-check`, `/diagnose-listing`) always include `"source": "live-gemini" | "live-bedrock" | "cached"` and `"model"`. **Provider chain (as of the grading-hardening pass): Gemini 2.5 Flash (primary) → Bedrock Nova 2 Lite (failover) → committed cache.** Gemini vision runs with native JSON mode + thinking disabled for complete, well-formed JSON.
 
 ---
 
@@ -36,13 +36,15 @@ Body: `{"item_id": "SL-001", "force_cached": false}` — photos come from the se
   "confidence": 0.91,
   "justification": "Light, even wear consistent with brief indoor use; structurally like-new.",
   "needs_human_review": false,
-  "source": "live-bedrock",
-  "model": "us.amazon.nova-2-lite-v1:0",
+  "review_reason": null,
+  "source": "live-gemini",
+  "model": "gemini-2.5-flash",
   "graded_uploaded_photos": false,
   "latency_ms": 1840
 }
 ```
-Side effect: appends `GRADED` passport event. `needs_human_review = confidence < 0.70`.
+Side effect: appends `GRADED` passport event.
+**Trust gate:** `needs_human_review` is `true` when the grade is not safe to trust on its own — `same_unit.verified == false` (different/unknown product), OR `same_unit.confidence < 0.50`, OR overall `confidence < 0.70`. `review_reason` is a one-line human-readable reason (or `null`). The gate does **not** block routing — the spine still flows; the frontend shows the warning. This is what stops a random/mismatched photo from passing as a clean letter grade.
 
 ## POST /route
 Body: `{"item_id": "SL-001"}` (requires a prior grade; `409 {"detail": "grade required"}` otherwise).

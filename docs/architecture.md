@@ -10,8 +10,8 @@
         │
         ├── Seed store (repo-baked JSON + images): items, passports, orders,
         │   neighbors/demand, cached AI responses
-        ├── Grading engine ──► Bedrock Nova 2 Lite (multimodal, converse API)
-        │                      └─(failure/timeout)──► Gemini 2.5 Flash (vision)
+        ├── Grading engine ──► Gemini 2.5 Flash (multimodal, primary)
+        │                      └─(failure/timeout)──► Bedrock Nova 2 Lite (vision, failover)
         │                      └─(both fail)────────► cached response for item
         ├── VRS economics engine (pure Python — deterministic, auditable)
         ├── Pricing / time-decay / liquidity-curve module (pure Python)
@@ -21,7 +21,7 @@
                                    └─(unset/error)──► in-memory store seeded from JSON
 ```
 
-**Design principle: the LLM is a perception layer. The money math is code.** Bedrock sees photos and returns structured condition facts; the VRS engine turns facts into rupee decisions deterministically. This is what separates us from chatbot wrappers — and it's why the demo can show its math.
+**Design principle: the LLM is a perception layer. The money math is code.** The vision model (Gemini 2.5 Flash, Nova failover) sees photos and returns structured condition facts; the VRS engine turns facts into rupee decisions deterministically. This is what separates us from chatbot wrappers — and it's why the demo can show its math.
 
 ## 2. Mermaid diagram (use in PRD/deck)
 
@@ -49,7 +49,9 @@ flowchart LR
 
 ## 3. GenAI core — the three Bedrock calls
 
-All three use the existing `llm.py` failover pattern, extended with image content blocks and JSON-constrained output. `temperature=0.2` for grading (consistency > creativity). Every response is validated against a Pydantic schema; invalid JSON → one retry with the validation error in the prompt → then cached fallback.
+All three use the existing `llm.py` failover pattern, extended with image content blocks and JSON-constrained output. **Primary provider is Gemini 2.5 Flash; Bedrock Nova 2 Lite is the failover** (set via `LLM_PRIMARY`/`LLM_FALLBACK`; Gemini Pro's free tier quota-walls under demo load, Flash does not). `temperature=0.2` for grading (consistency > creativity). Gemini vision runs with `response_mime_type="application/json"` **and thinking disabled** (`thinking_budget=0`) — 2.5 Flash is a thinking model whose reasoning tokens otherwise eat `max_output_tokens` and truncate the JSON mid-object on harder cases. Every response is validated against a Pydantic schema; invalid JSON → one retry with the validation error in the prompt → then cached fallback.
+
+**Grading prompt is delta-honest, not defect-biased.** The rubric grades *physical condition change vs day-0*, and the prompt explicitly tells the model to ignore differences caused by lighting, camera angle, distance, background, shadows, or image quality — only genuine wear/damage counts. (Earlier the prompt asked for "every visible difference," which dragged identical-but-recaptured photos down to B.) **Trust gate (`grading.grade_item`):** the result carries `needs_human_review` + `review_reason`, set when `same_unit.verified` is false, `same_unit.confidence < 0.50`, or overall `confidence < 0.70` — so a different/unknown product (or a non-product image) is flagged rather than passed off as a clean letter grade. The gate is non-blocking (the spine still routes); the frontend surfaces the warning.
 
 ### 3.1 Delta-Grader (`POST /grade`)
 **Input images:** 1 catalog image + 2 birth-certificate (day-0) photos + 2–3 current photos.
@@ -91,7 +93,7 @@ Each path returns its full cost breakdown — the frontend renders the math, not
 ## 5. Demo-safety: seed data + fallback (nothing on stage can fail)
 
 - **Seed store (repo-baked, in `backend/app/seed/`):** `items.json` (8 curated items: metadata, MRP, age, category), `orders.json` (Rahul's order history + 12 dormant units of the monitor ASIN within 5 km), `neighbors.json` (~30 synthetic local buyers with wishlists/notify-me), `size_signals.json` (MT7 — per-ASIN fit social proof for footwear/apparel), `seller_catalog.json` (MT7 — per-SKU sell-through + return counts), `images/` (catalog + day-0 + current photos per item, also copied to `frontend/public/items/`).
-- **Cache layer:** for every seed item, the real Bedrock grading/seal/diagnostics responses are captured once during build and committed as `cached/{item_id}.{call}.json`. At request time: try Bedrock (15s read timeout) → on failure try Gemini → on failure return the cached response with `"source": "cached"`. The UI renders identically; a failed live call on stage is invisible.
+- **Cache layer:** for every seed item, real grading/seal/diagnostics responses are captured once during build and committed as `cached/{item_id}.{call}.json`. At request time: try Gemini 2.5 Flash (18s timeout) → on failure try Bedrock Nova → on failure return the cached response with `"source": "cached"`. The UI renders identically; a failed live call on stage is invisible. (Re-capture with `scripts/capture_cache.py` whenever the model or prompt changes, or when real demo photos land.)
 - **Live-call policy for the video/stage:** 2–3 hero items run live; the rest serve cached. Never demo an un-tested item (no live judge-item scans).
 - **DynamoDB optional:** passport events write to DynamoDB only if `DYNAMODB_TABLE_NAME` is set (see docs/db-setup.md); otherwise an in-memory store seeded from JSON. Cold-start state loss is irrelevant for a demo run.
 

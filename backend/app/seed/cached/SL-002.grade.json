@@ -1,7 +1,7 @@
 {
   "same_unit": {
     "verified": true,
-    "confidence": 0.95
+    "confidence": 1.0
   },
   "grade": "A",
   "defects": [],
@@ -12,7 +12,7 @@
     },
     {
       "item": "charger or power adapter",
-      "present": false
+      "present": true
     },
     {
       "item": "user manual",
@@ -20,7 +20,7 @@
     }
   ],
   "usage_detected": false,
-  "confidence": 0.95,
-  "justification": "The unit appears identical to the catalog and day-0 images with no visible wear, defects, or signs of use; only the accessories are missing.",
-  "model": "us.amazon.nova-2-lite-v1:0"
+  "confidence": 1.0,
+  "justification": "The item is the same unit and appears to be in the same condition as when it was delivered, with no new defects or signs of use.",
+  "model": "gemini-2.5-flash"
 }

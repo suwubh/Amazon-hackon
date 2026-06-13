@@ -109,7 +109,9 @@ export default function Grade({ item, grade, routing, onRoute, onBack }) {
           <p className="text-[13px] text-sl-ink leading-relaxed">“{grade.justification}”</p>
         </div>
         {grade.needs_human_review && (
-          <p className="mt-2 text-[12px] text-warn font-600">⚑ Low confidence — flagged for human review.</p>
+          <p className="mt-2 text-[12px] text-warn font-600">
+            ⚑ {grade.review_reason || "Flagged for human review."}
+          </p>
         )}
       </div>
 
