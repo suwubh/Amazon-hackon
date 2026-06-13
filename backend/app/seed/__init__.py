@@ -31,6 +31,13 @@ with open(SEED_DIR / "buyer.json", encoding="utf-8") as f:
 with open(SEED_DIR / "dark_stores.json", encoding="utf-8") as f:
     DARK_STORES = json.load(f)["dark_stores"]
 
+with open(SEED_DIR / "returns_seed.json", encoding="utf-8") as f:
+    RETURNS_SEED = json.load(f)["returns"]
+
+
+def returns_seed() -> list[dict]:
+    return RETURNS_SEED
+
 
 def get_item(item_id: str) -> dict | None:
     return ITEMS.get(item_id)

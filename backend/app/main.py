@@ -6,6 +6,7 @@ from mangum import Mangum
 from .llm import ask_llm
 from . import grading, passport, seed, vrs, healthcard, radar, inspection, pricing, metrics
 from . import size, seller, orders as orders_mod, buyer, cascade as cascade_mod
+from . import returns as returns_mod, resell as resell_mod
 
 app = FastAPI(title="Amazon Second Life API")
 
@@ -257,6 +258,91 @@ def checkout(persona: str, body: CheckoutIn):
     result = buyer.checkout(persona, confirm=body.confirm)
     if result is None:
         raise HTTPException(status_code=404, detail="no cart for this persona")
+    return result
+
+
+# --- MT10: Ops returns desk (seeded extras + buyer-initiated returns) ---
+
+
+class ReturnIn(BaseModel):
+    persona: str = Field(default="buyer", max_length=20)
+    order_id: str | None = Field(default=None, max_length=40)
+    asin: str | None = Field(default=None, max_length=20)
+    title: str | None = Field(default=None, max_length=120)
+    category: str | None = Field(default=None, max_length=30)
+    thumb: str | None = Field(default=None, max_length=120)
+    return_reason: str | None = Field(default=None, max_length=120)
+    price_paid: int | None = Field(default=None, ge=0, le=10_000_000)
+
+
+@app.get("/returns")
+def get_returns():
+    """Ops returns desk: seeded extras + dynamic buyer-initiated returns."""
+    return returns_mod.list_returns()
+
+
+@app.post("/returns")
+def post_return(body: ReturnIn):
+    """A buyer initiates a return from order history → lands on the Ops desk."""
+    return returns_mod.add_return(body.model_dump())
+
+
+# --- MT10: resell marketplace (quote · listings · live interest) ---
+
+
+class ResellQuoteIn(BaseModel):
+    item_id: str = Field(..., min_length=1, max_length=20)
+    range_km: int = Field(default=7, ge=1, le=50)
+    grade: str | None = Field(default=None, max_length=2)
+
+
+class ResellListIn(BaseModel):
+    item_id: str = Field(..., min_length=1, max_length=20)
+    persona: str = Field(default="rahul", max_length=20)
+    ask_price: int = Field(..., ge=1, le=10_000_000)
+    range_km: int = Field(default=7, ge=1, le=50)
+
+
+class InterestIn(BaseModel):
+    buyer_name: str | None = Field(default=None, max_length=40)
+    distance_km: float | None = Field(default=None, ge=0, le=100)
+    offer: int | None = Field(default=None, ge=0, le=10_000_000)
+
+
+@app.post("/resell/quote")
+def resell_quote(body: ResellQuoteIn):
+    result = resell_mod.quote(body.item_id, body.range_km, grade=body.grade or "B")
+    if result is None:
+        raise HTTPException(status_code=404, detail="item not found")
+    return result
+
+
+@app.post("/resell/listings")
+def resell_create(body: ResellListIn):
+    result = resell_mod.create_listing(body.item_id, body.persona, body.ask_price, body.range_km)
+    if result is None:
+        raise HTTPException(status_code=404, detail="item not found")
+    return result
+
+
+@app.get("/resell/listings")
+def resell_listings():
+    return resell_mod.list_listings()
+
+
+@app.get("/resell/listings/{listing_id}")
+def resell_listing(listing_id: str):
+    result = resell_mod.get_listing(listing_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="listing not found")
+    return result
+
+
+@app.post("/resell/listings/{listing_id}/interest")
+def resell_interest(listing_id: str, body: InterestIn):
+    result = resell_mod.add_interest(listing_id, body.buyer_name, body.distance_km, body.offer)
+    if result is None:
+        raise HTTPException(status_code=404, detail="listing not found")
     return result
 
 

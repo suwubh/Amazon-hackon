@@ -1,0 +1,8 @@
+{
+  "comment": "Extra placeholder return rows for the Ops returns desk (MT10 Fix 2). Display-only — not live-gradeable. Images are placeholders; replace later. Dynamic buyer returns (POST /returns) are appended at runtime in returns.py.",
+  "returns": [
+    {"return_id": "RTN-2001", "title": "Denimworks Slim-Fit Jeans (32)", "category": "apparel", "thumb": "/items/RTN-2001/current_1.jpg", "return_reason": "fit too tight", "price_paid": 1499, "source": "seed", "status": "queued"},
+    {"return_id": "RTN-2002", "title": "BrewBot 2-Slice Toaster", "category": "appliances", "thumb": "/items/RTN-2002/current_1.jpg", "return_reason": "stopped heating", "price_paid": 1899, "source": "seed", "status": "queued"},
+    {"return_id": "RTN-2003", "title": "AquaPure Steel Water Bottle (1L)", "category": "home", "thumb": "/items/RTN-2003/current_1.jpg", "return_reason": "leaks from cap", "price_paid": 699, "source": "seed", "status": "queued"}
+  ]
+}
