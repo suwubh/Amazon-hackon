@@ -48,3 +48,30 @@ def cached_response(item_id: str, call: str) -> dict | None:
         with open(p, encoding="utf-8") as f:
             return json.load(f)
     return None
+
+
+def item_by_asin(asin: str) -> dict | None:
+    for it in ITEMS.values():
+        if it["asin"] == asin:
+            return it
+    return None
+
+
+def buyers_for_asin(asin: str, max_km: float | None = None) -> list[dict]:
+    """Synthetic local buyers (wishlist / notify-me / recent-search) for an ASIN,
+    nearest first, optionally capped to a radius."""
+    out = [
+        b for b in NEIGHBORS["buyers"]
+        if asin in b["wishlist_asins"] and (max_km is None or b["distance_km"] <= max_km)
+    ]
+    return sorted(out, key=lambda b: b["distance_km"])
+
+
+def demand_point() -> dict:
+    return ORDERS["demand_point"]
+
+
+def dormant_units(asin: str) -> list[dict]:
+    """Dormant units of an ASIN sitting in homes near the demand point, nearest first."""
+    out = [u for u in ORDERS["dormant_units"] if u["asin"] == asin]
+    return sorted(out, key=lambda u: u["distance_km"])

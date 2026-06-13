@@ -167,6 +167,7 @@ def grade_item(item_id: str, force_cached: bool = False) -> dict:
     passport.append_event(item_id, "GRADED", {
         "grade": result["grade"], "confidence": result["confidence"],
         "defects": result["defects"], "same_unit": result["same_unit"],
-        "usage_detected": result["usage_detected"], "source": source,
+        "usage_detected": result["usage_detected"], "justification": result["justification"],
+        "source": source,
     })
     return result

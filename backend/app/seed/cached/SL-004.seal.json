@@ -1,0 +1,7 @@
+{
+  "sealed": true,
+  "tamper_evidence": null,
+  "verdict": "SEALED_NEW",
+  "confidence": 0.96,
+  "model": "us.amazon.nova-2-lite-v1:0"
+}

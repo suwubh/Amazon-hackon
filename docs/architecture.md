@@ -66,7 +66,7 @@ Listing photo + 2 graded-return photos + return-reason strings → `{discrepanci
 
 ## 4. VRS economics engine (deterministic Python)
 
-`recovery(path) = expected_sale_price(path) − cost(path)`, winner = argmax. Initial constants (tune in MT2 so the hero shoe reads **warehouse ≈ −₹70 vs Second Life local hop ≈ +₹290**; final constants recorded here when locked):
+`recovery(path) = sum(breakdown components)`, winner = argmax over eligible paths. Each path's `recovery` is the exact sum of its breakdown (positive sale/credit + negative costs) so the UI math always reconciles. **Constants LOCKED in MT2** (`backend/app/vrs.py` + `pricing.py`):
 
 | Path | Sale price basis | Costs |
 |---|---|---|
@@ -77,9 +77,16 @@ Listing photo + 2 graded-return photos + return-reason strings → `{discrepanci
 | `liquidate` | MRP × 0.12 | bulk handling 20 |
 | `rto_relist` (sealed only) | MRP × 0.90 | relabel 15 + local delivery 40 |
 
-`resale = MRP × category_depreciation(age_months) × grade_factor` · grade factors A 0.80 / B 0.65 / C 0.45 / D 0.25 · demand multiplier 0.9–1.15 from seeded local-demand count · **time decay:** −5%/week unsold; below the donate threshold the item auto-routes to donation with CSR certificate (guaranteed terminal state). Paths gated by eligibility (e.g. `local_p2p` requires ≥1 seeded match within 15 km; `rto_relist` requires seal verdict).
+`resale = round(MRP × depreciation(category, age_months) × grade_factor × demand_multiplier)`.
+- **grade_factor:** A 0.80 / B 0.65 / C 0.45 / D 0.25
+- **depreciation:** linear `max(floor, 1 − rate×age_months)` per category — footwear (.040/.30), electronics (.030/.25), apparel (.060/.20), appliances (.025/.35), books (.050/.15), home (.030/.30), bags (.035/.25); default (.040/.25)
+- **demand_multiplier** (seeded local buyers for the ASIN within 15 km): 0→0.90, 1–2→1.00, 3–4→1.10, 5+→1.15
+- **time decay:** −5%/week unsold (drives `/health-card` price_decay and the `/price-curve` liquidity slider)
+- **eligibility gates:** `local_p2p` needs ≥1 buyer ≤15 km; `refurbish` needs grade∈{C,D}, resale ≥₹600 and a repairable category; `rto_relist` needs a SEALED_NEW verdict — and a sealed RTO unit **skips grading**, routing as factory-new (grade A).
 
 Each path returns its full cost breakdown — the frontend renders the math, not just the winner.
+
+**Locked hero outcomes (computed live by the deployed engine, not hardcoded):** the ₹500 return shoe routes to **local_p2p at every grade** — grade D (current placeholder cache): local **+₹83** vs warehouse **−₹129**; grade C: **+₹181** vs **−₹31**; grade B (real worn-photo target): **+₹279** vs **+₹66**. The sealed RTO mixer (SL-004) routes to **rto_relist +₹2,464**, bypassing warehouse inspection. The thesis holds across grades: the ₹250 reverse-logistics fixed cost destroys low-value returns; a local hop recovers most of the value.
 
 ## 5. Demo-safety: seed data + fallback (nothing on stage can fail)
 

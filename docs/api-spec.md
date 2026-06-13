@@ -43,28 +43,28 @@ Side effect: appends `GRADED` passport event. `needs_human_review = confidence <
 
 ## POST /route
 Body: `{"item_id": "SL-001"}` (requires a prior grade; `409 {"detail": "grade required"}` otherwise).
-→ `200`:
+→ `200` (real output for SL-001 at the current cached grade D; every `recovery` equals the sum of its `breakdown`):
 ```json
 {
   "item_id": "SL-001",
-  "resale_value": 310,
+  "resale_value": 132,
   "paths": [
-    {"path": "local_p2p", "recovery": 290, "eligible": true, "winner": true,
-     "breakdown": {"sale_price": 295, "local_hop": -40, "payment_fee": -6, "relist_cost": 0},
-     "note": "3 matched buyers within 4 km", "distance_km": 4},
-    {"path": "warehouse_relist", "recovery": -70, "eligible": true, "winner": false,
-     "breakdown": {"sale_price": 285, "reverse_ship": -120, "inspection": -40, "relist": -60, "fc_handling": -30}},
-    {"path": "refurbish", "recovery": 150, "eligible": true, "winner": false, "breakdown": {...}},
-    {"path": "donate", "recovery": 45, "eligible": true, "winner": false, "breakdown": {...}},
-    {"path": "liquidate", "recovery": 40, "eligible": true, "winner": false, "breakdown": {...}},
+    {"path": "local_p2p", "recovery": 83, "eligible": true, "winner": true,
+     "breakdown": {"sale_price": 125, "local_hop": -40, "payment_fee": -2},
+     "note": "3 matched buyers within 4 km", "distance_km": 2.7},
+    {"path": "warehouse_relist", "recovery": -129, "eligible": true, "winner": false,
+     "breakdown": {"sale_price": 121, "reverse_ship": -120, "inspection": -40, "relist": -60, "fc_handling": -30}},
+    {"path": "refurbish", "recovery": 0, "eligible": false, "winner": false, "note": "not economical to refurbish this item"},
+    {"path": "donate", "recovery": 45, "eligible": true, "winner": false, "breakdown": {"csr_tax_credit": 75, "pickup": -30}},
+    {"path": "liquidate", "recovery": 40, "eligible": true, "winner": false, "breakdown": {"sale_price": 60, "bulk_handling": -20}},
     {"path": "rto_relist", "recovery": 0, "eligible": false, "winner": false, "note": "not an RTO item"}
   ],
   "decision": "local_p2p",
   "co2_saved_kg": 2.1,
-  "km_saved": 596
+  "km_saved": 597
 }
 ```
-Side effect: appends `ROUTED` event. (Numbers above illustrative; engine computes them.)
+Side effect: appends `ROUTED` event. Recovery figures scale with grade (B target ≈ local +₹279 vs warehouse +₹66); local_p2p wins at every grade for this item. Ineligible paths return `recovery: 0`, `eligible: false`, an empty `breakdown` omitted, and a `note`.
 
 ## GET /health-card/{item_id}
 Requires grade + route (`409` otherwise).

@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from mangum import Mangum
 from .llm import ask_llm
-from . import grading, passport, seed
+from . import grading, passport, seed, vrs, healthcard, radar, inspection, pricing, metrics
 
 app = FastAPI(title="Amazon Second Life API")
 
@@ -76,6 +76,91 @@ def grade(body: GradeIn):
         raise HTTPException(status_code=404, detail="item not found")
     except grading.CacheMiss:
         raise HTTPException(status_code=502, detail="ai_unavailable")
+
+
+class ItemIn(BaseModel):
+    item_id: str = Field(..., min_length=1, max_length=20)
+
+
+class SealIn(ItemIn):
+    force_cached: bool = False
+
+
+class DiagnoseIn(BaseModel):
+    asin: str = Field(..., min_length=1, max_length=20)
+    force_cached: bool = False
+
+
+@app.post("/route")
+def route(body: ItemIn):
+    try:
+        return vrs.route_item(body.item_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="item not found")
+    except vrs.NeedsGrade:
+        raise HTTPException(status_code=409, detail="grade required")
+
+
+@app.get("/health-card/{item_id}")
+def health_card(item_id: str):
+    try:
+        return healthcard.health_card(item_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="item not found")
+    except healthcard.NeedsGradeAndRoute:
+        raise HTTPException(status_code=409, detail="grade and route required")
+
+
+@app.post("/seal-check")
+def seal_check(body: SealIn):
+    item = seed.get_item(body.item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="item not found")
+    if not item.get("rto"):
+        raise HTTPException(status_code=409, detail="not an RTO item")
+    try:
+        return inspection.seal_check(body.item_id, force_cached=body.force_cached)
+    except inspection.CacheMiss:
+        raise HTTPException(status_code=502, detail="ai_unavailable")
+
+
+@app.get("/radar/{asin}")
+def radar_for(asin: str):
+    result = radar.radar(asin)
+    if result is None:
+        raise HTTPException(status_code=404, detail="no dormant units for this asin")
+    return result
+
+
+@app.get("/price-curve/{item_id}")
+def price_curve(item_id: str):
+    item = seed.get_item(item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="item not found")
+    graded = passport.latest_event(item_id, "GRADED")
+    if graded is None:
+        raise HTTPException(status_code=409, detail="grade required")
+    buyers = seed.buyers_for_asin(item["asin"], vrs.LOCAL_RADIUS_KM)
+    demand = pricing.demand_multiplier(len(buyers))
+    resale = pricing.resale_value(item["mrp"], item["category"], item["age_months"],
+                                  graded["data"]["grade"], demand)
+    curve = pricing.liquidity_curve([b["max_price"] for b in buyers], resale)
+    return {"item_id": item_id, **curve}
+
+
+@app.post("/diagnose-listing")
+def diagnose_listing(body: DiagnoseIn):
+    try:
+        return inspection.diagnose_listing(body.asin, force_cached=body.force_cached)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="item not found")
+    except inspection.CacheMiss:
+        raise HTTPException(status_code=502, detail="ai_unavailable")
+
+
+@app.get("/metrics")
+def get_metrics():
+    return metrics.metrics()
 
 
 # Lambda entrypoint. Locally you still run: uvicorn app.main:app --reload --port 8080

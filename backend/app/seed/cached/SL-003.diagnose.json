@@ -1,0 +1,17 @@
+{
+  "returns_analyzed": 18,
+  "discrepancies": [
+    {
+      "aspect": "color",
+      "listing_shows": "navy blue",
+      "returns_show": "royal blue"
+    }
+  ],
+  "patch": {
+    "field": "title/photos",
+    "current_text": "Vastram Men's Cotton Kurta (Navy Blue)",
+    "suggested_text": "Vastram Men's Cotton Kurta (Royal Blue) — true-to-life daylight photos added"
+  },
+  "projected_return_reduction_pct": 40,
+  "model": "us.amazon.nova-2-lite-v1:0"
+}
