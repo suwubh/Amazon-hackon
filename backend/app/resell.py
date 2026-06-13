@@ -85,6 +85,7 @@ def _store() -> dict[str, dict]:
             _LISTINGS[lid] = {
                 "listing_id": lid, **s, "delivery_cut": _delivery_cut(s["range_km"]),
                 "net": s["ask_price"] - _delivery_cut(s["range_km"]),
+                "status": "active", "sold_to": None,
                 "interests": [], "created_ts": datetime.now(timezone.utc).isoformat(),
             }
     return _LISTINGS
@@ -103,12 +104,15 @@ def create_listing(item_id: str, persona: str, ask_price: int, range_km: int) ->
         "item_id": item_id,
         "asin": item["asin"],
         "title": item["title"],
+        "category": item.get("category"),
         "thumb": item.get("thumb"),
         "ask_price": ask_price,
         "range_km": range_km,
         "delivery_cut": _delivery_cut(range_km),
         "net": ask_price - _delivery_cut(range_km),
         "owner": persona,
+        "status": "active",
+        "sold_to": None,
         "interests": [],
         "created_ts": datetime.now(timezone.utc).isoformat(),
     }
@@ -137,7 +141,44 @@ def add_interest(listing_id: str, buyer_name: str | None = None,
         "buyer_name": buyer_name,
         "distance_km": distance_km,
         "offer": offer if offer is not None else listing["ask_price"],
+        "status": "pending",
         "ts": datetime.now(timezone.utc).isoformat(),
     }
     listing["interests"].append(interest)
+    return listing
+
+
+def _find_interest(listing: dict, interest_id: str) -> dict | None:
+    return next((i for i in listing["interests"] if i["interest_id"] == interest_id), None)
+
+
+def sell_to_interest(listing_id: str, interest_id: str) -> dict | None:
+    """The reseller accepts one interested buyer → the listing is sold to them.
+    The take-home (net) is the buyer's offer minus the delivery cut for this reach."""
+    listing = _store().get(listing_id)
+    if listing is None:
+        return None
+    interest = _find_interest(listing, interest_id)
+    if interest is None:
+        return None
+    interest["status"] = "accepted"
+    for other in listing["interests"]:
+        if other["interest_id"] != interest_id and other["status"] == "pending":
+            other["status"] = "passed"
+    listing["status"] = "sold"
+    listing["sold_to"] = interest
+    listing["net_earned"] = interest["offer"] - listing["delivery_cut"]
+    listing["sold_ts"] = datetime.now(timezone.utc).isoformat()
+    return listing
+
+
+def decline_interest(listing_id: str, interest_id: str) -> dict | None:
+    """The reseller declines one interested buyer; the listing stays active for others."""
+    listing = _store().get(listing_id)
+    if listing is None:
+        return None
+    interest = _find_interest(listing, interest_id)
+    if interest is None:
+        return None
+    interest["status"] = "declined"
     return listing

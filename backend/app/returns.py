@@ -33,8 +33,12 @@ def add_return(order: dict) -> dict:
     global _counter
     _counter += 1
     item = seed.item_by_asin(order.get("asin", "")) or {}
+    # item_id lets the Ops desk open this return into the grading spine (inspection).
+    # Only returns that resolve to a real catalog item are gradeable; others stay display-only.
+    item_id = item.get("item_id")
     entry = {
         "return_id": f"RTN-B{_counter:03d}",
+        "item_id": item_id,
         "title": order.get("title") or item.get("title") or "Returned item",
         "category": order.get("category") or item.get("category") or "other",
         "thumb": order.get("thumb") or item.get("thumb"),

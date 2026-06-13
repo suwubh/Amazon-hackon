@@ -50,7 +50,8 @@ export default function App() {
   const [sellerLoading, setSellerLoading] = useState(false);
   const [busyAsin, setBusyAsin] = useState(null);
   const [advice, setAdvice] = useState(null); // size-advice payload for the PDP
-  const [returns, setReturns] = useState(null); // MT10 Ops returns desk (/returns)
+  const [returns, setReturns] = useState(null); // MT10 Ops returns desk (server /returns)
+  const [localReturns, setLocalReturns] = useState([]); // buyer-initiated this session (instance-proof)
 
   // MT10 resell flow (order-history Resell → confirm → photo → price/range → list)
   const [resellItem, setResellItem] = useState(null);
@@ -153,6 +154,30 @@ export default function App() {
       }
     } catch (e) {
       setErr({ message: `Couldn't open this item (${e.detail || e.message}).`, retry: () => openItem(row) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // MT10 — open a returns-desk row into the grading spine (inspect → grade → route
+  // → Health Card), the same flow as the hero. Only rows that resolve to a catalog
+  // item carry an item_id; photoless seeded rows stay display-only.
+  async function openReturnForGrading(row) {
+    if (!row.item_id) return;
+    setErr(null);
+    resetItemState();
+    setOrigin("ops");
+    setLane("spine");
+    setBusy(true);
+    try {
+      const detail = await api.item(row.item_id).catch(() => null);
+      const it = detail
+        ? { ...detail.item, passport: detail.passport }
+        : { item_id: row.item_id, title: row.title, category: row.category, thumb: row.thumb };
+      setItem(it);
+      setScreen("intro");
+    } catch (e) {
+      setErr({ message: `Couldn't open this return (${e.detail || e.message}).`, retry: () => openReturnForGrading(row) });
     } finally {
       setBusy(false);
     }
@@ -388,52 +413,43 @@ export default function App() {
     }
   }
 
-  // buyer: order history → one-tap resell (RECIRCULATE) → reuses the radar lane
-  async function resellOrder(order) {
-    if (!order.resellable || !order.item_id) return;
-    setErr(null);
-    resetItemState();
-    setOrigin("buyer");
-    setLane("radar");
-    setBusy(true);
-    try {
-      const detail = await api.item(order.item_id).catch(() => null);
-      const it = detail
-        ? { ...detail.item, passport: detail.passport }
-        : { item_id: order.item_id, asin: order.asin, title: order.title };
-      setItem(it);
-      const r = await api.radar(order.asin);
-      setRadarData(r);
-      setScreen("radar");
-    } catch (e) {
-      setErr({ message: `Couldn't open resale (${e.detail || e.message}).`, retry: () => resellOrder(order) });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // MT10 — a buyer return posts to the returns store → shows on the Ops desk.
+  // MT10 — a buyer return posts to the returns store AND lands optimistically in a
+  // session-local list. The Ops desk merges local + server returns (local wins), so
+  // the row shows instantly and survives a cross-instance /returns refetch on Lambda.
   function returnOrder(order) {
+    const catItem = items.find((i) => i.item_id === order.item_id || i.asin === order.asin);
+    const optimistic = {
+      return_id: `RTN-LOCAL-${order.order_id || Date.now()}`,
+      item_id: order.item_id || catItem?.item_id || null,
+      title: order.title || catItem?.title || "Returned item",
+      category: order.category || catItem?.category || "other",
+      thumb: order.thumb || catItem?.thumb || (order.item_id ? `/items/${order.item_id}/current_1.jpg` : null),
+      return_reason: order.return_reason || "buyer-initiated return",
+      price_paid: order.price_paid,
+      order_id: order.order_id,
+      source: "buyer",
+      status: "queued",
+    };
+    setLocalReturns((prev) => [optimistic, ...prev.filter((r) => r.order_id !== optimistic.order_id)]);
+    setToast({
+      title: "Return started",
+      message: `${optimistic.title} → sent to the Returns desk for AI grading.`,
+    });
+    // Persist to the server store too (best-effort) so an Ops-desk refetch sees it.
     api.addReturn({
       persona: PERSONA,
       order_id: order.order_id,
       asin: order.asin,
       title: order.title,
-      return_reason: "buyer-initiated return",
+      category: catItem?.category,
+      thumb: catItem?.thumb,
+      return_reason: optimistic.return_reason,
       price_paid: order.price_paid,
-    })
-      .then((entry) => {
-        setReturns((prev) => (prev ? [entry, ...prev] : [entry]));
-        setToast({
-          title: "Return started",
-          message: `${order.title} → sent to the Returns desk for AI grading.`,
-        });
-      })
-      .catch((e) => setErr({ message: `Couldn't start the return (${e.detail || e.message}).` }));
+    }).catch(() => {});
   }
 
-  // MT10 — order-history Resell → confirm sheet → photo→AI price → price/range → list.
-  // (The notification idle-monitor nudge still uses the old resellOrder→radar flow.)
+  // MT10 — the ONE resell path: order-history Resell AND the notification nudge both
+  // run this — confirm sheet → photo → AI price → price/range → list on Flash deals.
   async function startResell(order) {
     if (!order.resellable || !order.item_id) return;
     setErr(null);
@@ -502,10 +518,12 @@ export default function App() {
     }
   }
 
-  // notification tap → the idle-monitor nudge resells; the rest are informational
+  // notification tap → the idle-monitor nudge resells via the SAME flow as
+  // order-history (confirm → photo → AI price → list); the rest are informational.
   function openNotif(n) {
     if (n.kind === "resell" && n.item_id) {
-      resellOrder({ item_id: n.item_id, asin: n.asin, title: n.title, resellable: true });
+      const known = (buyerOrders || []).find((o) => o.item_id === n.item_id || o.asin === n.asin);
+      startResell(known || { item_id: n.item_id, asin: n.asin, title: n.title, resellable: true });
     } else {
       setToast({ title: n.title, message: n.body });
     }
@@ -530,6 +548,14 @@ export default function App() {
     }
   }
 
+  // Ops desk shows session-local buyer returns first (instance-proof), then any
+  // server returns not already covered by a local row (dedup by order_id).
+  const mergedReturns = (() => {
+    const seen = new Set(localReturns.map((r) => r.order_id).filter(Boolean));
+    const server = (returns || []).filter((r) => !(r.order_id && seen.has(r.order_id)));
+    return [...localReturns, ...server];
+  })();
+
   // The landing owns the full-screen dark stage and has no top bar; every inner
   // page lives inside the slim WebShell chrome.
   if (screen === "home") {
@@ -546,12 +572,13 @@ export default function App() {
         {screen === "inbox" && (
           <Inbox
             items={items}
-            returns={returns}
+            returns={mergedReturns}
             metrics={metrics}
             loading={itemsLoading}
             forceCached={forceCached}
             onForceCached={setForceCached}
             onOpen={openItem}
+            onOpenReturn={openReturnForGrading}
             onShowMetrics={() => setScreen("metrics")}
             onBack={goHome}
           />
@@ -573,8 +600,8 @@ export default function App() {
             onReturn={returnOrder}
             onCheckout={openCheckout}
             onNotif={openNotif}
-            onFlash={<FlashDeals />}
-            onResells={<MyResells persona={PERSONA} />}
+            onFlash={<FlashDeals persona={PERSONA} />}
+            onResells={<MyResells persona={PERSONA} onToast={setToast} />}
             onBack={goHome}
           />
         )}

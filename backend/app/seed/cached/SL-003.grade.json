@@ -1,0 +1,28 @@
+{
+  "same_unit": {
+    "verified": true,
+    "confidence": 0.93
+  },
+  "grade": "B",
+  "defects": [
+    {
+      "area": "collar",
+      "description": "Light creasing and a faint colour difference under daylight vs the catalog navy",
+      "severity": "minor"
+    }
+  ],
+  "completeness": [
+    {
+      "item": "price tag attached",
+      "present": false
+    },
+    {
+      "item": "original packaging",
+      "present": true
+    }
+  ],
+  "usage_detected": false,
+  "confidence": 0.88,
+  "justification": "The kurta matches the day-0 unit with only light creasing; the navy reads slightly brighter in daylight than the catalog photo, which is the common 'colour not as shown' return reason.",
+  "model": "us.amazon.nova-2-lite-v1:0"
+}

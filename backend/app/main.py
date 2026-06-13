@@ -309,6 +309,10 @@ class InterestIn(BaseModel):
     offer: int | None = Field(default=None, ge=0, le=10_000_000)
 
 
+class SellIn(BaseModel):
+    interest_id: str = Field(..., min_length=1, max_length=20)
+
+
 @app.post("/resell/quote")
 def resell_quote(body: ResellQuoteIn):
     result = resell_mod.quote(body.item_id, body.range_km, grade=body.grade or "B")
@@ -343,6 +347,24 @@ def resell_interest(listing_id: str, body: InterestIn):
     result = resell_mod.add_interest(listing_id, body.buyer_name, body.distance_km, body.offer)
     if result is None:
         raise HTTPException(status_code=404, detail="listing not found")
+    return result
+
+
+@app.post("/resell/listings/{listing_id}/sell")
+def resell_sell(listing_id: str, body: SellIn):
+    """The reseller one-tap sells to a chosen interested buyer → listing marked sold."""
+    result = resell_mod.sell_to_interest(listing_id, body.interest_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="listing or interest not found")
+    return result
+
+
+@app.post("/resell/listings/{listing_id}/decline")
+def resell_decline(listing_id: str, body: SellIn):
+    """The reseller declines one interested buyer; the listing stays active for others."""
+    result = resell_mod.decline_interest(listing_id, body.interest_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="listing or interest not found")
     return result
 
 

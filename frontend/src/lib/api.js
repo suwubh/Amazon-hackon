@@ -61,6 +61,11 @@ export const api = {
   listings: () => req("/resell/listings"),
   listing: (id) => req(`/resell/listings/${id}`),
   addInterest: (id, body = {}) => req(`/resell/listings/${id}/interest`, { method: "POST", body }),
+  // Reseller one-tap accepts / declines an interested buyer.
+  sellToInterest: (id, interestId) =>
+    req(`/resell/listings/${id}/sell`, { method: "POST", body: { interest_id: interestId } }),
+  declineInterest: (id, interestId) =>
+    req(`/resell/listings/${id}/decline`, { method: "POST", body: { interest_id: interestId } }),
   // MT9 — buyer storefront. Cart is a per-instance overlay; the rest are seed reads.
   cart: (persona) => req(`/cart/${persona}`),
   addToCart: (persona, asin, size, qty = 1) =>

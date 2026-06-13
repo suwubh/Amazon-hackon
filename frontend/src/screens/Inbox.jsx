@@ -33,7 +33,7 @@ function StageToggle({ value, onChange }) {
 // moved out to the Buyer/Seller views, de-mixing the desk. The SL-001 hero is the
 // live-gradeable spine; other return rows (incl. buyer-initiated ones from
 // /returns) are display-only "queued for grading".
-export default function Inbox({ items, returns, metrics, loading, forceCached, onForceCached, onOpen, onShowMetrics, onBack }) {
+export default function Inbox({ items, returns, metrics, loading, forceCached, onForceCached, onOpen, onOpenReturn, onShowMetrics, onBack }) {
   const hero = items.find((i) => i.item_id === "SL-001");
   const returnItems = items.filter((i) => i.status === "return_initiated" && i.item_id !== "SL-001");
   const rto = items.filter((i) => i.status === "rto_in_transit");
@@ -123,19 +123,29 @@ export default function Inbox({ items, returns, metrics, loading, forceCached, o
           />
         ))}
 
-        {/* dynamic returns from /returns (seeded extras + buyer-initiated) */}
-        {dyn.map((r, idx) => (
-          <QueuedReturn
-            key={r.return_id}
-            title={r.title}
-            category={r.category}
-            thumb={r.thumb}
-            reason={r.return_reason}
-            price={r.price_paid}
-            buyer={r.source === "buyer"}
-            delay={120 + idx * 45}
-          />
-        ))}
+        {/* dynamic returns from /returns (seeded extras + buyer-initiated). Rows that
+            resolve to a catalog item (item_id) are inspectable → tap to grade. */}
+        {dyn.map((r, idx) =>
+          r.item_id && onOpenReturn ? (
+            <GradeableReturn
+              key={r.return_id}
+              row={r}
+              onOpen={() => onOpenReturn(r)}
+              delay={120 + idx * 45}
+            />
+          ) : (
+            <QueuedReturn
+              key={r.return_id}
+              title={r.title}
+              category={r.category}
+              thumb={r.thumb}
+              reason={r.return_reason}
+              price={r.price_paid}
+              buyer={r.source === "buyer"}
+              delay={120 + idx * 45}
+            />
+          )
+        )}
 
         {!loading && returnsCount === 0 && (
           <p className="text-[12.5px] text-sl-muted px-1 py-4">No returns waiting.</p>
@@ -203,6 +213,38 @@ function QueuedReturn({ title, category, thumb, reason, price, buyer, delay }) {
         QUEUED
       </span>
     </div>
+  );
+}
+
+// A buyer-initiated return that resolves to a catalog item → tappable into the
+// grading spine (inspect → grade → route → Health Card), like the hero.
+function GradeableReturn({ row, onOpen, delay }) {
+  return (
+    <button
+      onClick={onOpen}
+      className="group w-full text-left rounded-2xl bg-white ring-1 ring-sl-green/40 shadow-card p-3 flex gap-3 transition hover:ring-sl-green hover:shadow-pop active:scale-[0.99] anim-fade-up"
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <Thumb src={row.thumb} alt={row.title} category={row.category} className="w-[60px] h-[60px] rounded-xl shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          {row.source === "buyer" && (
+            <span className="inline-block rounded-full px-2 py-0.5 text-[9px] font-800 tracking-wide ring-1 bg-sl-mint text-sl-green-deep ring-sl-green/30">
+              BUYER RETURN
+            </span>
+          )}
+          <h3 className="font-600 text-[13px] leading-tight text-sl-ink truncate">{row.title}</h3>
+        </div>
+        {row.return_reason && <p className="text-[11px] text-sl-muted mt-0.5 truncate">“{row.return_reason}”</p>}
+        <span className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-700 text-sl-green-deep">
+          Inspect &amp; grade
+          <svg viewBox="0 0 24 24" className="w-3 h-3 group-hover:translate-x-0.5 transition" fill="none">
+            <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </div>
+      <Chevron />
+    </button>
   );
 }
 
