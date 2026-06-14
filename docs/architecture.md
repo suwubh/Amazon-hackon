@@ -27,24 +27,22 @@
 
 ```mermaid
 flowchart LR
-    subgraph Customer touchpoints
-        A[Guided photo capture\nat return initiation] --> G
-        R[One-tap resell\nfrom order history] --> P
-        D[Demand: search/wishlist\nnear the item] --> IAR
+    subgraph CT["Customer touchpoints"]
+        A["Guided photo capture\nat return initiation"] --> G
+        R["One-tap resell\nfrom order history"] --> P
+        D["Demand: search/wishlist\nnear the item"] --> IAR
     end
-    subgraph GenAI core - Gemini 2.5 Flash multimodal, Nova failover
-        G[Delta-Grader\ncatalog + birth-certificate vs now] -->|grade, defects,\nconfidence, same-unit| V
-        S[Seal-Check\nRTO lane] --> V
-        L[Listing Diagnostics\nlisting vs returned photos] --> PATCH[Auto-patch listing]
+
+    subgraph GAI["GenAI core - Gemini 2.5 Flash multimodal, Nova failover"]
+        G["Delta-Grader\ncatalog + birth-certificate vs now"] --> V["grade, defects,\nconfidence, same-unit"]
+        S["Seal-Check\nrTO lane"] --> V
+        L["Listing Diagnostics\nlisting vs returned photos"] --> PATCH["Auto-patch listing"]
     end
-    subgraph Deterministic engines
-        V[Value Recovery Score\nargmax over 6 paths] -->|winner + visible math| HC
-        IAR[Idle Asset Radar\ngeo-match order history] --> P
-        PRICE[Liquidity slider +\ntime-decay pricing] --> HC
+
+    subgraph DE["Deterministic engines"]
+        V --> VC["winner + visible math"]
+        IAR["Idle Asset Radar\ngeo-match order history"] --> P
     end
-    P[Product Passport\nDynamoDB event log] <--> G & V & HC
-    HC[Product Health Card\n+ warranty transfer] --> BUY[Next owner\nPDP row / locker / agent hop]
-    V -.->|confidence < 0.70| HQ[Human review queue]
 ```
 
 ## 3. GenAI core — the three vision calls
