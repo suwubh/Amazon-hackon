@@ -12,23 +12,69 @@ products a second life instead of a one-way trip to a warehouse or a landfill. B
 
 ---
 
-## The problem
+# Problems We're Solving
 
-When a ₹500 pair of shoes is returned, the cheapest thing Amazon can do with it is
-destroy its value. Reverse shipping (₹120) + inspection (₹40) + re-photograph and relist
-(₹60) comes to about **₹220 of cost on a ₹150 margin**, so the item is liquidated for
-scrap or written off. The return travels 600 km to die.
+Three problems in the returns-and-resale economy — all rooted in the same gap: a product's fate is decided too late, too centrally, and at too much cost.
 
-This is not a corner case. It is the long tail of returns, and the numbers are large:
+---
 
-- **~$890 billion** of merchandise was returned in the US in 2024 — about **16.9% of
-  retail sales** ([NRF & Happy Returns, 2024](https://nrf.com/media-center/press-releases/nrf-and-happy-returns-report-2024-retail-returns-total-890-billion)).
-- In India, **COD orders return at ~24–28%**, with COD return-to-origin alone near **26%**
-  ([Shipway, 2024](https://mediabrief.com/shipnotes-reveals-26-rto-rate-on-cod-orders-across-india/)).
-- Reverse logistics runs **₹200–400 per returned item** — often more than the item's
-  margin ([Edgistify](https://www.edgistify.com/resources/blogs/cost-of-returns-india)).
+## 1. Returns travel all the way back before anyone decides their fate
 
-Premium goods absorb that cost. Cheap goods can't, so they're thrown away.
+Only **~48% of returned items are ever resold at full price**. The remaining products lose value through liquidation, markdowns, refurbishment costs, or disposal.
+
+Today, a returned product is typically shipped back to a centralized returns facility before anyone decides whether it should be resold, refurbished, donated, liquidated, or discarded. By the time that decision is made, the economics are often already broken.
+
+* Reverse logistics consumes **20–30% of an item's original value**.
+* Processing a single return costs approximately **$10–$65 per item**.
+* Global e-commerce returns now exceed **$640B annually**.
+* In India, reverse logistics can cost **₹200–₹400 per returned item**, often exceeding the margin on lower-value products.
+
+For many products, especially low-margin ones, the return journey costs more than the value that can be recovered. As a result, usable products are liquidated in bulk or never find a second owner.
+
+---
+
+## 2. People want to resell, but privacy and friction keep supply locked away
+
+Demand for secondhand products has never been stronger.
+
+* The global resale market is estimated between **$188B and $594B**.
+* Approximately **60% of online shoppers in India already purchase secondhand goods**.
+
+Yet millions of perfectly usable products remain idle in homes because reselling is inconvenient and often feels unsafe. Traditional peer-to-peer platforms require sellers to expose personal contact details, communicate with strangers, negotiate manually, and arrange physical meetups.
+
+The demand exists. The inventory exists. The trust layer does not.
+
+As a result, products that could easily find another owner remain unused while buyers continue purchasing new replacements.
+
+---
+
+## 3. Most returns aren't defective — they're avoidable
+
+The majority of online returns happen because the product was not what the customer expected, not because it was damaged.
+
+* Global e-commerce return rates average **19–20.5%**.
+* Fashion return rates in India reach **25–40%**.
+* **45–52% of returns are driven by sizing and fit issues alone**.
+* **63% of shoppers now practice "bracketing"** — ordering multiple sizes or variants with the intention of returning most of them.
+
+Every one of these returns still triggers transportation, inspection, handling, repackaging, and processing costs.
+
+Most of these products are perfectly functional. Yet they still travel through an expensive reverse-logistics pipeline before a decision is made about their next best use.
+
+---
+
+### Sources
+
+* NRF *2025 Retail Returns Landscape*
+* Eightx
+* Richpanel
+* TrackVid
+* Claimlane (2026)
+* Loop Returns (2026)
+* Statista Consumer Insights
+* ThredUp (2026)
+* Shipway (2024)
+* Edgistify
 
 ## The idea
 
