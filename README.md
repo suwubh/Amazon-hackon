@@ -8,7 +8,7 @@ products a second life instead of a one-way trip to a warehouse or a landfill. B
 
 - **Live demo:** https://amazon-hackon.vercel.app
 
-![Landing](docs/screenshots/01-landing.png)
+![Landing](docs/screenshots/01-landing.jpeg)
 
 ---
 
@@ -96,8 +96,7 @@ trust, and a last-mile fleet. A standalone marketplace structurally cannot copy 
 
 ## How it works — the core flow
 
-A returns agent scans the unit at handoff and uploads its current photos. From there the
-item moves through four stages, each one a real API call you can audit in the network tab.
+Whether a returns agent scans a unit at handoff or an owner resells a dormant product from their order history, the item moves through five stages — each backed by real API calls you can audit in the network tab.
 
 ### 1. Scan and delta-grade
 
@@ -106,8 +105,8 @@ photos** — not a generic catalog image — and returns the *delta*: localized 
 severity, a grade A–D, a confidence score, and a same-unit check that flags swap fraud and
 worn-then-returned items. Low-confidence grades route to a human queue.
 
-![Delta-grade report](docs/screenshots/04-delta-grade.png)
 ![Scan-Station](docs/screenshots/03-scan-station.png)
+![Delta-grade report](docs/screenshots/04-delta-grade.jpeg)
 
 ### 2. Value Recovery Score
 
@@ -118,7 +117,7 @@ recovers **+₹83** against the warehouse round-trip's **−₹129**: a ₹212 s
 of reverse freight cut. The cascade strip shows where the item goes next, week by week, if
 it doesn't sell locally.
 
-![Recovery path](docs/screenshots/05-recovery-path.png)
+![Recovery path](docs/screenshots/05-recovery-path.jpeg)
 
 ### 3. Product Health Card
 
@@ -135,6 +134,13 @@ the marketplace — **demand activates supply**: when buyers search nearby, owne
 matching dormant unit get a one-tap resell nudge priced from the same engine.
 
 ![Idle Asset Radar](docs/screenshots/08-idle-radar.png)
+
+### 5. Peer-to-Peer Resell
+
+Owners can list dormant products directly from their order history using a **two-step resell flow**. The owner confirms purchase details and uploads current photos to run the AI grader. Based on the grade and local demand, a range-pricing slider lets them balance reach (local delivery cost) against available buyers to optimize their net payout, listing the item instantly to the public Flash Deals board.
+
+![Resell flow](docs/screenshots/10-resell.jpeg)
+![Resell pricing](docs/screenshots/11-resell-price.jpeg)
 
 > **The design rule:** the vision model is a *perception layer only*. Every rupee on screen
 > comes from deterministic Python and a real API field — never hardcoded in the UI — so the
@@ -154,7 +160,7 @@ returned units photograph royal blue"*) and the projected return-rate drop.
 
 | Buyer storefront | Seller dashboard |
 |---|---|
-| ![Buyer storefront](docs/screenshots/07-buyer-storefront.png) | ![Seller dashboard](docs/screenshots/09-seller-dashboard.png) |
+| ![Buyer storefront](docs/screenshots/07-buyer-storefront.jpeg) | ![Seller dashboard](docs/screenshots/09-seller-dashboard.png) |
 
 ## Architecture
 
