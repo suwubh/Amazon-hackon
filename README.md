@@ -78,7 +78,7 @@ Most of these products are perfectly functional. Yet they still travel through a
 
 A return is not a logistics problem. It is an **information-destruction problem**.
 
-When the shoes were bought, Amazon already held everything about them: catalog photos,
+When the products were bought, Amazon already held everything about them: catalog photos,
 specs, price history, the invoice, demand signals. The moment they're returned, all of it
 is treated as dead — the item becomes an anonymous object that must be expensively
 *re-identified*: re-photographed, re-described, re-priced, re-inspected. That
