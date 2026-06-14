@@ -161,6 +161,8 @@ returned units photograph royal blue"*) and the projected return-rate drop.
 
 ## Architecture
 
+### System Infrastructure
+
 ```
 React 19 + Tailwind v4 (Vite)  ──►  FastAPI on AWS Lambda (container, ca-central-1,
    web console on Vercel               Function URL) + Mangum
@@ -172,6 +174,32 @@ React 19 + Tailwind v4 (Vite)  ──►  FastAPI on AWS Lambda (container, ca-c
                                           └─ Product Passport: DynamoDB event log
                                              (behind DYNAMODB_TABLE_NAME; in-memory fallback)
 ```
+
+### System Execution Flow
+
+```mermaid
+flowchart LR
+    subgraph CT["Customer touchpoints"]
+        A["Guided photo capture\nat return initiation"] --> G
+        R["One-tap resell\nfrom order history"] --> P
+        D["Demand: search/wishlist\nnear the item"] --> IAR
+    end
+
+    subgraph GAI["GenAI core - Gemini 2.5 Flash multimodal, Nova failover"]
+        G["Delta-Grader\ncatalog + birth-certificate vs now"] --> V["grade, defects,\nconfidence, same-unit"]
+        S["Seal-Check\nrTO lane"] --> V
+        L["Listing Diagnostics\nlisting vs returned photos"] --> PATCH["Auto-patch listing"]
+    end
+
+    subgraph DE["Deterministic engines"]
+        V --> VC["winner + visible math"]
+        IAR["Idle Asset Radar\ngeo-match order history"] --> P
+    end
+    P[Product Passport\nDynamoDB event log] <--> G & V & HC
+    HC[Product Health Card\n+ warranty transfer] --> BUY[Next owner\nPDP row / locker / agent hop]
+    V -.->|confidence < 0.70| HQ["Human review queue"]
+```
+
 
 - **Provider-agnostic perception.** Primary and fallback are env-driven
   (`LLM_PRIMARY` / `LLM_FALLBACK`). Gemini Flash has free-tier headroom; Nova 2 Lite on AWS
