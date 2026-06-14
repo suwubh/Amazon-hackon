@@ -1,0 +1,12 @@
+{
+  "comment": "Buy-side 'Second Life options near you' surfaced on a normal PDP (MT11 — the layer-not-app twin: the buyer MEETS a recovered unit in the normal buy flow, not a separate Renewed storefront). PRICE is computed live by pricing.resale_value at the offer's grade + local demand (auditable, ties to the sell-side math); grade/distance_km/eta/item_id are seeded facts about each nearby recovered unit. item_id points at the catalog product (used for the thumbnail).",
+  "offers": {
+    "B0SHOE500": [
+      {"item_id": "SL-001", "grade": "C", "distance_km": 2.7, "eta": "Pickup today"},
+      {"item_id": "SL-001", "grade": "D", "distance_km": 5.6, "eta": "Delivery tomorrow"}
+    ],
+    "B0KURTA01": [
+      {"item_id": "SL-003", "grade": "B", "distance_km": 2.8, "eta": "Delivery tomorrow"}
+    ]
+  }
+}

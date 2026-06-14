@@ -2,14 +2,15 @@ import { useState } from "react";
 import TopBar from "../components/TopBar";
 import Thumb from "../components/Thumb";
 import { FooterAction, SLBadge } from "../components/ui";
-import { inr } from "../lib/format";
+import { inr, gradeColor, gradeLabel } from "../lib/format";
 
 // Buyer PDP — the PREVENT moment. Before a fit-risky buy, show how past buyers of
 // this size actually fit it (GET /size-advice → fit) and the Second Life resale
 // value so the buyer knows it holds worth. Every figure is a field of the response.
-export default function Pdp({ advice, onBack, onBuy, busy }) {
+export default function Pdp({ advice, secondLife, onBack, onBuy, onPickSecondLife, busy }) {
   const fit = advice.fit;
   const resale = advice.resale_hint;
+  const offers = secondLife?.offers || [];
   const [size, setSize] = useState(fit?.recommended_size || null);
 
   return (
@@ -104,6 +105,46 @@ export default function Pdp({ advice, onBack, onBuy, busy }) {
               )}
             </p>
             <p className="mt-1.5 text-white/45 text-[11px]">Second Life buys it back or resells it locally — one tap, no listing.</p>
+          </div>
+        </div>
+      )}
+
+      {/* MT11 — buy-side: recovered units of THIS product available near you.
+          The "layer, not app" twin — the buyer meets a Second Life unit on the
+          normal product page. Every figure comes from /second-life/{asin}. */}
+      {offers.length > 0 && (
+        <div className="px-4 pt-4 pb-2">
+          <div className="rounded-2xl bg-white shadow-card ring-1 ring-sl-green/40 p-4 anim-fade-up">
+            <div className="flex items-center gap-1.5 mb-1">
+              <SLBadge />
+              <span className="text-[10px] font-800 uppercase tracking-wider text-sl-green-deep">Second Life options near you</span>
+            </div>
+            <p className="text-[12px] text-sl-muted leading-snug mb-2.5">
+              {offers.length} recovered unit{offers.length > 1 ? "s" : ""} of this product on offer locally — verified Health Card, transferable warranty.
+            </p>
+            <div className="space-y-2">
+              {offers.map((o, i) => (
+                <button
+                  key={i}
+                  onClick={() => onPickSecondLife(o)}
+                  className="w-full text-left rounded-xl ring-1 ring-sl-line bg-sl-paper hover:ring-sl-green/60 hover:bg-white transition active:scale-[0.99] p-3 flex items-center gap-3"
+                >
+                  <span
+                    className="w-9 h-9 rounded-lg grid place-items-center font-display font-800 text-[15px] text-white shrink-0"
+                    style={{ background: gradeColor(o.grade) }}
+                  >
+                    {o.grade}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-700 text-[13px] text-sl-ink leading-tight">
+                      Grade {o.grade} · <span className="capitalize">{gradeLabel(o.grade)}</span>
+                    </p>
+                    <p className="text-[11.5px] text-sl-muted mt-0.5">{o.distance_km} km away · {o.eta}</p>
+                  </div>
+                  <span className="font-display font-800 text-[16px] tnum text-sl-green-deep self-center">{inr(o.price)}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

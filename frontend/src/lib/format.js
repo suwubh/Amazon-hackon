@@ -26,7 +26,7 @@ const GRADE_LABEL = {
   A: "Like new",
   B: "Lightly used",
   C: "Used — good",
-  D: "Used — fair",
+  D: "Heavily used",
   F: "Heavy wear",
 };
 export const gradeLabel = (g) => GRADE_LABEL[g] || "Graded";

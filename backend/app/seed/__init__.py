@@ -39,6 +39,17 @@ def returns_seed() -> list[dict]:
     return RETURNS_SEED
 
 
+with open(SEED_DIR / "second_life_offers.json", encoding="utf-8") as f:
+    SECOND_LIFE_OFFERS = json.load(f)["offers"]
+
+
+def second_life_offers(asin: str) -> list[dict]:
+    """Seeded buy-side recovered units for an ASIN (grade/distance/eta facts);
+    empty list if this product has no nearby Second Life inventory."""
+    val = SECOND_LIFE_OFFERS.get(asin, [])
+    return val if isinstance(val, list) else []
+
+
 with open(SEED_DIR / "purchase_profile.json", encoding="utf-8") as f:
     PURCHASE_PROFILE = json.load(f)
 

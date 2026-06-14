@@ -6,7 +6,7 @@ from mangum import Mangum
 from .llm import ask_llm
 from . import grading, passport, seed, vrs, healthcard, radar, inspection, pricing, metrics
 from . import size, seller, orders as orders_mod, buyer, cascade as cascade_mod
-from . import returns as returns_mod, resell as resell_mod
+from . import returns as returns_mod, resell as resell_mod, second_life as second_life_mod
 
 app = FastAPI(title="Amazon Second Life API")
 
@@ -189,6 +189,15 @@ def get_metrics():
     return metrics.metrics()
 
 
+@app.post("/metrics/reset")
+def reset_metrics():
+    """Clear live passport events back to the seeded baseline so the impact
+    counter is stable across rehearsal runs (the cumulative metric otherwise
+    drifts up each time an item is routed). Presenter tool — not wired to any UI."""
+    passport.reset()
+    return metrics.metrics()
+
+
 # --- MT7: two-sided console (Prevent + Recirculate) ---
 
 
@@ -214,6 +223,17 @@ def orders(persona: str):
     if result is None:
         raise HTTPException(status_code=404, detail="no order history for this persona")
     return {"persona": persona, "orders": result}
+
+
+@app.get("/second-life/{asin}")
+def second_life(asin: str):
+    """Buyer PDP: recovered units of this product on offer near the shopper
+    (price from the pricing engine; grade/distance/eta seeded). Empty offers
+    list if the product has no nearby Second Life inventory."""
+    result = second_life_mod.second_life(asin)
+    if result is None:
+        raise HTTPException(status_code=404, detail="asin not in catalog")
+    return result
 
 
 # --- MT9: buyer storefront (cart · notifications · UPI checkout) ---

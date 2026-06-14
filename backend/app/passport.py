@@ -41,6 +41,16 @@ def _seed_baseline() -> None:
 _seed_baseline()
 
 
+def reset() -> None:
+    """Clear all live (in-memory) events back to the seeded baseline. Backs
+    POST /metrics/reset so a presenter gets a clean, stable metrics number before
+    a rehearsal run — the in-memory store is per-instance and the cumulative
+    counter otherwise drifts up every time an item is routed. Does NOT touch
+    DynamoDB history (append-only); only the per-instance working set."""
+    _events.clear()
+    _seed_baseline()
+
+
 def append_event(item_id: str, event: str, data: dict) -> dict:
     record = {"ts": _now(), "event": event, "data": data}
     _events.setdefault(item_id, []).append(record)

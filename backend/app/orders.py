@@ -12,9 +12,27 @@ from datetime import date, datetime, timedelta
 from . import seed
 
 RETURN_WINDOW_DAYS = 10
-# Demo "today" — fixed so the window math is stable across demo days. Matches the
-# project's current date in CLAUDE.md context.
-TODAY = date(2026, 6, 13)
+
+
+def _demo_today() -> date:
+    """Anchor demo 'today' to just after the most recent seeded order so the
+    return window is always open for the recent orders, no matter what calendar
+    date the demo runs on (LOW 8 — avoids a stale hardcoded date that silently
+    closes the window if the demo slips a few days)."""
+    latest = None
+    for o in seed.order_history("rahul") or []:
+        try:
+            d = datetime.strptime(o["purchase_date"], "%Y-%m-%d").date()
+        except (ValueError, TypeError, KeyError):
+            continue
+        if latest is None or d > latest:
+            latest = d
+    return (latest + timedelta(days=2)) if latest else date(2026, 6, 13)
+
+
+# Demo "today", derived once at import. With the current seed (latest order
+# 2026-06-11) this is 2026-06-13 — unchanged numbers, now self-updating.
+TODAY = _demo_today()
 
 
 def _window(purchase_date: str) -> dict:

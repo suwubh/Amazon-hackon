@@ -137,9 +137,13 @@ Seller catalog sorted worst-first by return rate. `return_rate_pct` is computed 
 Stateless read. Backed by `seed/seller_catalog.json` + `seller.py`.
 
 ## GET /orders/{persona}  *(MT7 — buyer RECIRCULATE entry; MT10 adds return-window fields)*
-A persona's order history with a `resellable` flag (true when the ASIN has dormant units on the radar) and **MT10 return-window fields** (`return_window_open`, `return_by`, `days_left` — a 10-day window from `purchase_date`, computed against the demo date 2026-06-13). The resellable order (monitor) feeds the new resell flow (`/resell/*`); orders inside the window show an active Return button (→ `POST /returns`). `404` if the persona has no seeded history.
+A persona's order history with a `resellable` flag (true when the ASIN has dormant units on the radar) and **MT10 return-window fields** (`return_window_open`, `return_by`, `days_left` — a 10-day window from `purchase_date`). **MT11 (LOW 8):** the demo "today" is now **derived** from the most-recent seeded order (`latest purchase_date + 2 days`) instead of a hardcoded date, so the recent orders always show an open window no matter what day the demo runs. The resellable order (monitor) feeds the new resell flow (`/resell/*`); orders inside the window show an active Return button (→ `POST /returns`). `404` if the persona has no seeded history.
 → `200 {"persona": "rahul", "orders": [{"order_id": "171-7781002-RH04", "asin": "B0KURTA01", "title": "Vastram Men's Cotton Kurta (Navy Blue)", "purchase_date": "2026-06-09", "price_paid": 899, "status": "delivered", "return_window_open": true, "return_by": "2026-06-19", "days_left": 6, "item_id": "SL-003", "resellable": false}, {"order_id": "171-8835520-SL002", "asin": "B0MONITOR1", "purchase_date": "2024-11-02", "return_window_open": false, "return_by": "2024-11-12", "days_left": 0, "item_id": "SL-002", "resellable": true}]}`
 Stateless read. Backed by `seed/orders.json → {persona}_order_history` + `orders.py`.
+
+## GET /second-life/{asin}  *(MT11 — buyer-side BUY moment)*
+Recovered units of a product on offer **near the shopper**, surfaced on the normal PDP (the "layer, not app" twin — the buyer meets a Second Life unit in the regular buy flow, not a separate storefront). `price` is computed by the same pricing engine the sell side uses (`pricing.resale_value` at the offer's grade + local demand multiplier); `grade`/`distance_km`/`eta`/`item_id` are seeded facts (`seed/second_life_offers.json`) about each nearby unit. Returns an **empty `offers` list** for a catalog product with no nearby inventory; `404` for an unknown ASIN. Stateless read.
+→ `200 {"asin": "B0SHOE500", "title": "Aurelle Women's Running Shoes", "offers": [{"item_id": "SL-001", "grade": "C", "price": 238, "distance_km": 2.7, "eta": "Pickup today"}, {"item_id": "SL-001", "grade": "D", "price": 132, "distance_km": 5.6, "eta": "Delivery tomorrow"}]}` (nearest first).
 
 ## GET /returns · POST /returns  *(MT10 — Ops returns desk)*
 The Ops returns desk = static return-class items (`/items` where `status` is `return_initiated`/`rto_in_transit`) **+** this store. The store holds seeded placeholder extras (`seed/returns_seed.json`) plus any return a buyer initiates from order history. In-memory **per-Lambda-instance** (cart pattern) — a cold start resets to the seed.
@@ -175,7 +179,11 @@ Body: `{"confirm": false}`. No real payment — an API-returned UPI collect requ
 → `200 {"persona": "rahul", "order_id": "171-7697281-SL", "amount": 1399, "upi_vpa": "rahul@okhdfc", "status": "pending"|"success"}`
 
 ## GET /metrics
-Running demo counters (from passport events this session + seeded baseline).
-→ `200 {"items_processed": 8, "rupees_recovered": 4830, "rupees_vs_writeoff_baseline": 5390, "warehouse_bypass_pct": 62, "co2_saved_kg": 14.2, "landfill_diverted_kg": 6.1, "inspection_hours_saved": 2.7}`
+Running demo counters: a fixed pre-session **baseline** (5 items / ₹3,120 recovered / 80% bypass / 9.4 kg CO₂) **plus** every GRADED/ROUTED event in the current warm Lambda instance — so it grows live as items are routed on stage (proof the numbers aren't hardcoded). Cumulative per-instance, so it drifts up across rehearsals → see `/metrics/reset`.
+→ `200 {"items_processed": 5, "rupees_recovered": 3120, "rupees_vs_writeoff_baseline": 3980, "warehouse_bypass_pct": 80, "co2_saved_kg": 9.4, "landfill_diverted_kg": 4.2, "inspection_hours_saved": 1.7}` (fresh-instance baseline)
+
+## POST /metrics/reset  *(MT11 — MED 5, presenter tool, not wired to any UI)*
+Clears the per-instance passport working set back to the seeded baseline so the impact counter is **stable across rehearsal runs** (the cumulative metric otherwise nudges up every time an item is routed). Hit once right before a take. Does **not** touch DynamoDB history (append-only) — only the in-memory store. Returns the same shape as `GET /metrics` (at baseline).
+→ `200 {"items_processed": 5, "rupees_recovered": 3120, ...}`
 
 ## POST /chat — legacy boilerplate, kept but unused by the UI.

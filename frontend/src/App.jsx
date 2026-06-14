@@ -59,6 +59,7 @@ export default function App() {
   const [sellerLoading, setSellerLoading] = useState(false);
   const [busyAsin, setBusyAsin] = useState(null);
   const [advice, setAdvice] = useState(null); // size-advice payload for the PDP
+  const [secondLife, setSecondLife] = useState(null); // MT11 buy-side recovered units for the PDP
   const [returns, setReturns] = useState(null); // MT10 Ops returns desk (server /returns)
   const [localReturns, setLocalReturns] = useState([]); // buyer-initiated this session (instance-proof)
 
@@ -377,15 +378,28 @@ export default function App() {
   async function openPdp(gridItem) {
     setErr(null);
     setBusy(true);
+    setSecondLife(null);
     try {
       const a = await api.sizeAdvice(gridItem.asin, SAMPLE);
       setAdvice(a);
       setScreen("pdp");
+      // Buy-side recovered units (MT11) — non-blocking: a failure here never
+      // breaks the PDP; the row just doesn't render.
+      api.secondLife(gridItem.asin).then(setSecondLife).catch(() => {});
     } catch (e) {
       setErr({ message: `Couldn't open this product (${e.detail || e.message}).`, retry: () => openPdp(gridItem) });
     } finally {
       setBusy(false);
     }
+  }
+
+  // PDP → tap a Second Life option (recovered unit near you). Reuses the buyer-flow
+  // toast (no passport prereq, no metrics pollution) — closes the buy-side loop.
+  function pickSecondLife(offer) {
+    setToast({
+      title: `Reserved · Grade ${offer.grade} · ${inr(offer.price)}`,
+      message: `${offer.distance_km} km away · ${offer.eta}. Comes with a verified Product Health Card + transferable warranty.`,
+    });
   }
 
   // PDP add-to-cart → real /cart write, then land in the cart
@@ -640,7 +654,14 @@ export default function App() {
           />
         )}
         {screen === "pdp" && advice && (
-          <Pdp advice={advice} busy={busy} onBuy={buyPdp} onBack={() => setScreen("buyer")} />
+          <Pdp
+            advice={advice}
+            secondLife={secondLife}
+            busy={busy}
+            onBuy={buyPdp}
+            onPickSecondLife={pickSecondLife}
+            onBack={() => setScreen("buyer")}
+          />
         )}
         {screen === "checkout" && checkout && (
           <Checkout

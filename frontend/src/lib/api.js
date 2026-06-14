@@ -53,6 +53,9 @@ export const api = {
     req(`/size-advice/${asin}${persona ? `?persona=${persona}` : ""}`),
   sellerReturns: () => req("/seller/returns"),
   orders: (persona) => req(`/orders/${persona}`),
+  // MT11 — buy-side: recovered units of an ASIN on offer near the shopper, shown
+  // on the PDP. Stateless read (price from the engine, grade/distance seeded).
+  secondLife: (asin) => req(`/second-life/${asin}`),
   // MT10 — Ops returns desk + resell marketplace.
   returns: () => req("/returns"),
   addReturn: (body) => req("/returns", { method: "POST", body }),
