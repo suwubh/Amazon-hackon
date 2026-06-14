@@ -1,0 +1,32 @@
+{
+  "same_unit": {
+    "verified": true,
+    "confidence": 0.93
+  },
+  "catalog_matches_day0": {
+    "verified": true,
+    "confidence": 0.91
+  },
+  "grade": "B",
+  "defects": [
+    {
+      "area": "wheels",
+      "description": "Minor dust and light tread wear on the front wheels; folds and locks normally",
+      "severity": "minor"
+    }
+  ],
+  "completeness": [
+    {
+      "item": "original box",
+      "present": false
+    },
+    {
+      "item": "lid or cap",
+      "present": true
+    }
+  ],
+  "usage_detected": true,
+  "confidence": 0.89,
+  "justification": "A compact stroller with light wheel wear and minor dust from normal use; the fold mechanism and harness are intact, so it grades B.",
+  "model": "us.amazon.nova-2-lite-v1:0"
+}

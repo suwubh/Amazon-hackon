@@ -1,0 +1,32 @@
+{
+  "same_unit": {
+    "verified": true,
+    "confidence": 0.92
+  },
+  "catalog_matches_day0": {
+    "verified": true,
+    "confidence": 0.9
+  },
+  "grade": "B",
+  "defects": [
+    {
+      "area": "outsole",
+      "description": "Light sole creasing and faint dirt at the toe; cleans up with a wipe",
+      "severity": "minor"
+    }
+  ],
+  "completeness": [
+    {
+      "item": "original box",
+      "present": false
+    },
+    {
+      "item": "spare laces",
+      "present": false
+    }
+  ],
+  "usage_detected": true,
+  "confidence": 0.88,
+  "justification": "Trail sneakers worn a few times with light sole creasing and surface dirt but no structural damage; they clean up to a solid B.",
+  "model": "us.amazon.nova-2-lite-v1:0"
+}

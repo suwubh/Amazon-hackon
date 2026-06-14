@@ -1,0 +1,32 @@
+{
+  "same_unit": {
+    "verified": true,
+    "confidence": 0.94
+  },
+  "catalog_matches_day0": {
+    "verified": true,
+    "confidence": 0.92
+  },
+  "grade": "B",
+  "defects": [
+    {
+      "area": "side-rail",
+      "description": "Light surface scuffing on one rail consistent with normal nursery use; structurally sound",
+      "severity": "minor"
+    }
+  ],
+  "completeness": [
+    {
+      "item": "original box",
+      "present": false
+    },
+    {
+      "item": "lid or cap",
+      "present": true
+    }
+  ],
+  "usage_detected": true,
+  "confidence": 0.9,
+  "justification": "A well-kept convertible crib with only light rail scuffing from normal use; all hardware present and the frame is solid, so it grades B for easy resale.",
+  "model": "us.amazon.nova-2-lite-v1:0"
+}

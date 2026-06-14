@@ -77,8 +77,12 @@ def get_item(item_id: str) -> dict | None:
 
 
 def list_items() -> list[dict]:
-    """Items without the order block (that's detail-only)."""
-    return [{k: v for k, v in it.items() if k != "order"} for it in ITEMS.values()]
+    """Storefront/Ops catalog without the order block (that's detail-only). Skips
+    ``owned_only`` items — products that exist in the catalog purely so an owner's
+    order can resolve to an item_id for the resell flow (MT15 Your Things), not to
+    surface as new things to buy."""
+    return [{k: v for k, v in it.items() if k != "order"}
+            for it in ITEMS.values() if not it.get("owned_only")]
 
 
 def item_images(item_id: str) -> dict[str, list[Path]]:

@@ -169,6 +169,94 @@
       },
       "warranty_months": 12,
       "location": {"lat": 12.9166, "lon": 77.6101, "area": "Jayanagar"}
+    },
+    {
+      "item_id": "SL-009",
+      "asin": "B0CRIB0042",
+      "title": "DreamNest Convertible Crib",
+      "category": "home",
+      "mrp": 11999,
+      "age_months": 21,
+      "status": "idle",
+      "persona": "rahul",
+      "thumb": "/items/B0CRIB0042/current_1.jpg",
+      "return_reason": null,
+      "rto": false,
+      "owned_only": true,
+      "order": {
+        "order_id": "171-0034187-RH03",
+        "purchase_date": "2024-08-25",
+        "price_paid": 11999,
+        "invoice_id": "INV-RH03-0825"
+      },
+      "warranty_months": 12,
+      "location": {"lat": 12.9352, "lon": 77.6245, "area": "Koramangala"}
+    },
+    {
+      "item_id": "SL-010",
+      "asin": "B0STRLLR03",
+      "title": "GlidePro Compact Baby Stroller",
+      "category": "home",
+      "mrp": 7499,
+      "age_months": 20,
+      "status": "idle",
+      "persona": "rahul",
+      "thumb": "/items/B0STRLLR03/current_1.jpg",
+      "return_reason": null,
+      "rto": false,
+      "owned_only": true,
+      "order": {
+        "order_id": "171-6722914-RH02",
+        "purchase_date": "2024-09-18",
+        "price_paid": 7499,
+        "invoice_id": "INV-RH02-0918"
+      },
+      "warranty_months": 12,
+      "location": {"lat": 12.9352, "lon": 77.6245, "area": "Koramangala"}
+    },
+    {
+      "item_id": "SL-011",
+      "asin": "B0STRIDE08",
+      "title": "Stride Trail Sneakers",
+      "category": "footwear",
+      "mrp": 2499,
+      "age_months": 3,
+      "status": "idle",
+      "persona": "rahul",
+      "thumb": "/items/B0STRIDE08/current_1.jpg",
+      "return_reason": null,
+      "rto": false,
+      "owned_only": true,
+      "order": {
+        "order_id": "171-3300012-RH07",
+        "purchase_date": "2026-02-15",
+        "price_paid": 2499,
+        "invoice_id": "INV-RH07-0215"
+      },
+      "warranty_months": 3,
+      "location": {"lat": 12.9698, "lon": 77.7499, "area": "Whitefield"}
+    },
+    {
+      "item_id": "SL-012",
+      "asin": "B0LINEN01",
+      "title": "Vastram Linen Shirt",
+      "category": "apparel",
+      "mrp": 1199,
+      "age_months": 3,
+      "status": "idle",
+      "persona": "rahul",
+      "thumb": "/items/B0LINEN01/current_1.jpg",
+      "return_reason": null,
+      "rto": false,
+      "owned_only": true,
+      "order": {
+        "order_id": "171-3300011-RH06",
+        "purchase_date": "2026-03-04",
+        "price_paid": 1199,
+        "invoice_id": "INV-RH06-0304"
+      },
+      "warranty_months": 0,
+      "location": {"lat": 12.9784, "lon": 77.6408, "area": "Domlur"}
     }
   ]
 }

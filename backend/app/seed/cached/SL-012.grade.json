@@ -1,0 +1,32 @@
+{
+  "same_unit": {
+    "verified": true,
+    "confidence": 0.93
+  },
+  "catalog_matches_day0": {
+    "verified": true,
+    "confidence": 0.91
+  },
+  "grade": "B",
+  "defects": [
+    {
+      "area": "fabric",
+      "description": "Light wrinkling and a faint laundering softness; no stains, tears, or fading",
+      "severity": "minor"
+    }
+  ],
+  "completeness": [
+    {
+      "item": "price tag attached",
+      "present": false
+    },
+    {
+      "item": "original packaging",
+      "present": false
+    }
+  ],
+  "usage_detected": true,
+  "confidence": 0.87,
+  "justification": "A linen shirt with light wrinkling from wear and laundering but no stains or damage; it grades B and is ready to resell after a press.",
+  "model": "us.amazon.nova-2-lite-v1:0"
+}
