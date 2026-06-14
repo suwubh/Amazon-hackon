@@ -107,6 +107,7 @@ severity, a grade A–D, a confidence score, and a same-unit check that flags sw
 worn-then-returned items. Low-confidence grades route to a human queue.
 
 ![Delta-grade report](docs/screenshots/04-delta-grade.png)
+![Scan-Station](docs/screenshots/03-scan-station.png)
 
 ### 2. Value Recovery Score
 
