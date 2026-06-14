@@ -10,10 +10,12 @@ const SEV = {
   major: { cls: "bg-red-50 text-red-700", dot: "var(--color-neg)" },
 };
 
-export default function Grade({ item, grade, routing, onRoute, onBack }) {
+export default function Grade({ item, grade, previews, routing, onRoute, onBack }) {
   const id = item.item_id;
   const conf = Math.round((grade.confidence ?? 0) * 100);
   const su = grade.same_unit || {};
+  // NEW 6 — the NOW tile shows the photo the agent uploaded, not a seeded file.
+  const nowSrc = (previews && previews[0]) || `/items/${id}/current_1.jpg`;
 
   return (
     <div className="screen-scroll bg-sl-paper">
@@ -42,8 +44,9 @@ export default function Grade({ item, grade, routing, onRoute, onBack }) {
         </div>
       </div>
 
-      {/* same-unit verdict */}
-      <div className="px-4 pt-3">
+      {/* fault attribution (NEW 10) + same-unit verdict */}
+      <div className="px-4 pt-3 space-y-2">
+        <FaultBanner fault={grade.fault_attribution} returnable={grade.returnable} />
         <SameUnit verified={su.verified} confidence={su.confidence} />
       </div>
 
@@ -52,7 +55,7 @@ export default function Grade({ item, grade, routing, onRoute, onBack }) {
         <p className="text-[11px] font-700 uppercase tracking-wider text-sl-muted mb-2">Day-0 vs now</p>
         <div className="grid grid-cols-2 gap-2">
           <CompareTile src={`/items/${id}/day0_1.jpg`} cat={item.category} tag="DAY 0" tone="neutral" />
-          <CompareTile src={`/items/${id}/current_1.jpg`} cat={item.category} tag="NOW" tone="alert" />
+          <CompareTile src={nowSrc} cat={item.category} tag="NOW · UPLOADED" tone="alert" />
         </div>
       </div>
 
@@ -148,28 +151,57 @@ function ConfidenceRing({ value }) {
   const r = 22;
   const circ = 2 * Math.PI * r;
   return (
-    <div className="relative w-[60px] h-[60px] shrink-0">
-      <svg viewBox="0 0 60 60" className="w-full h-full -rotate-90">
-        <circle cx="30" cy="30" r={r} fill="none" stroke="var(--color-sl-line)" strokeWidth="6" />
-        <circle
-          cx="30"
-          cy="30"
-          r={r}
-          fill="none"
-          stroke="var(--color-sl-green)"
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeDasharray={circ}
-          strokeDashoffset={circ - (circ * v) / 100}
-          style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.22,1,0.36,1)" }}
-        />
-      </svg>
-      <div className="absolute inset-0 grid place-items-center">
-        <span className="font-display font-700 text-[15px] tnum text-sl-ink">{value}%</span>
+    <div className="flex flex-col items-center shrink-0 w-[72px]">
+      <div className="relative w-[60px] h-[60px]">
+        <svg viewBox="0 0 60 60" className="w-full h-full -rotate-90">
+          <circle cx="30" cy="30" r={r} fill="none" stroke="var(--color-sl-line)" strokeWidth="6" />
+          <circle
+            cx="30"
+            cy="30"
+            r={r}
+            fill="none"
+            stroke="var(--color-sl-green)"
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={circ - (circ * v) / 100}
+            style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.22,1,0.36,1)" }}
+          />
+        </svg>
+        <div className="absolute inset-0 grid place-items-center">
+          <span className="font-display font-700 text-[15px] tnum text-sl-ink">{value}%</span>
+        </div>
       </div>
-      <span className="absolute -bottom-3 inset-x-0 text-center text-[9px] font-600 text-sl-muted">conf.</span>
+      <span className="mt-1 text-center text-[9px] font-600 text-sl-muted leading-tight">Prediction<br />confidence</span>
     </div>
   );
+}
+
+// NEW 10 — fault attribution banner. Seller fault = catalog ≠ day-0 (buyer can still
+// return); customer fault = the returned unit ≠ what was delivered (not returnable).
+function FaultBanner({ fault, returnable }) {
+  if (fault === "seller") {
+    return (
+      <div className="rounded-xl bg-amber-50 ring-1 ring-amber-200 px-3 py-2.5 flex items-start gap-2.5">
+        <span className="text-amber-500 text-lg leading-none">⚑</span>
+        <p className="text-[12.5px] text-amber-800 font-600">
+          Seller’s fault — the catalog photo doesn’t match the unit that was delivered. Return accepted; flagged to the seller.
+        </p>
+      </div>
+    );
+  }
+  if (fault === "customer") {
+    return (
+      <div className="rounded-xl bg-red-50 ring-1 ring-red-200 px-3 py-2.5 flex items-start gap-2.5">
+        <span className="text-red-500 text-lg leading-none">⛔</span>
+        <p className="text-[12.5px] text-red-700 font-600">
+          Customer’s fault — this isn’t the unit that was delivered.{" "}
+          {returnable === false && "Not eligible for return — "}flagged for human review.
+        </p>
+      </div>
+    );
+  }
+  return null;
 }
 
 function SameUnit({ verified, confidence }) {

@@ -65,6 +65,11 @@ class CompletenessItem(BaseModel):
 class GradeCore(BaseModel):
     """What the model must return — the perception facts."""
     same_unit: SameUnit
+    # Two-way identity (MT12 NEW 10): catalog_matches_day0 is whether the seller's
+    # CATALOG photo matches the DAY-0 unit (seller-side honesty); same_unit is
+    # whether the CURRENT unit matches DAY-0 (customer-side honesty). Optional so a
+    # model that omits it doesn't fail the parse — absence is treated as "matches".
+    catalog_matches_day0: SameUnit | None = None
     grade: Literal["A", "B", "C", "D"]
     defects: list[Defect]
     completeness: list[CompletenessItem]
@@ -111,6 +116,7 @@ def _build_prompt(item: dict, n_catalog: int, n_day0: int, n_current: int) -> st
     checklist = CHECKLISTS.get(item["category"], [])
     schema = (
         '{"same_unit": {"verified": bool, "confidence": 0.0-1.0}, '
+        '"catalog_matches_day0": {"verified": bool, "confidence": 0.0-1.0}, '
         '"grade": "A"|"B"|"C"|"D", '
         '"defects": [{"area": str, "description": str, "severity": "minor"|"moderate"|"major"}], '
         '"completeness": [{"item": str, "present": bool}], '
@@ -123,9 +129,12 @@ def _build_prompt(item: dict, n_catalog: int, n_day0: int, n_current: int) -> st
         f"last {n_current} = CURRENT photos taken now, at return initiation.\n\n"
         "Compare the CURRENT photos against the CATALOG image and the DAY-0 photos of this unit. Tasks:\n"
         "1. same_unit: is the CURRENT item physically the same unit and the same product as "
-        "DAY-0/CATALOG (brand, model, colorway, markings, wear pattern, label/serial positions)? "
+        "the DAY-0 photos (brand, model, colorway, markings, wear pattern, label/serial positions)? "
         "If it is clearly a different product or not the product at all, set verified=false. "
         "Give a confidence 0-1.\n"
+        "1b. catalog_matches_day0: does the seller's CATALOG listing photo show the same product "
+        "as the DAY-0 unit (brand, model, colorway)? If the catalog advertises a clearly different "
+        "product than what was delivered, set verified=false. Give a confidence 0-1.\n"
         "2. defects: list ONLY genuine physical condition changes from day-0 — new scuffs, "
         "scratches, stains, soiling, tears, fading, deformation, or missing/added parts. Name the "
         "specific area (e.g. 'toe-box-left', 'sole-heel'), describe it, rate severity "
@@ -215,12 +224,33 @@ def grade_item(item_id: str, force_cached: bool = False,
         core = {k: v for k, v in cached.items() if k != "model"}
         source, model = "cached", cached.get("model", PROVIDER_MODEL["bedrock"])
 
+    # Fault attribution (MT12 NEW 10) — two-way identity check decides whose fault a
+    # mismatch is, and whether the item can be returned:
+    #   • CATALOG ≠ DAY-0   → SELLER's fault (listed the wrong product); buyer CAN return.
+    #   • CATALOG == DAY-0 but CURRENT ≠ DAY-0 → CUSTOMER's fault (swapped the unit);
+    #     NOT returnable + flagged for human review.
+    su = core["same_unit"]
+    cat = core.get("catalog_matches_day0")
+    catalog_ok = True if not cat else bool(cat.get("verified", True))
+    same_ok = bool(su["verified"])
+
+    if not catalog_ok:
+        fault_attribution = "seller"
+        returnable = True
+    elif not same_ok:
+        fault_attribution = "customer"
+        returnable = False
+    else:
+        fault_attribution = "none"
+        returnable = True
+
     # Trust gate: a grade is only trustworthy if the model confirmed this is the same
     # unit/product as day-0. A different product (or a non-product image) must NOT pass
     # as a clean letter grade — it gets flagged for human review with the reason surfaced.
-    su = core["same_unit"]
-    if not su["verified"]:
-        review_reason = "Could not confirm this is the same product as day-0 — flagged for manual review."
+    if fault_attribution == "seller":
+        review_reason = "Catalog photo doesn't match the delivered unit — seller listing error, flagged for review."
+    elif fault_attribution == "customer":
+        review_reason = "Returned item isn't the unit that was delivered — not eligible for return, flagged for review."
     elif su["confidence"] < 0.50:
         review_reason = "Low confidence the item matches day-0 — flagged for manual review."
     elif core["confidence"] < 0.70:
@@ -231,6 +261,8 @@ def grade_item(item_id: str, force_cached: bool = False,
     result = {
         "item_id": item_id,
         **core,
+        "fault_attribution": fault_attribution,
+        "returnable": returnable,
         "needs_human_review": review_reason is not None,
         "review_reason": review_reason,
         "source": source,

@@ -7,6 +7,7 @@ from .llm import ask_llm
 from . import grading, passport, seed, vrs, healthcard, radar, inspection, pricing, metrics
 from . import size, seller, orders as orders_mod, buyer, cascade as cascade_mod
 from . import returns as returns_mod, resell as resell_mod, second_life as second_life_mod
+from . import lifestage as lifestage_mod
 
 app = FastAPI(title="Amazon Second Life API")
 
@@ -225,6 +226,17 @@ def orders(persona: str):
     return {"persona": persona, "orders": result}
 
 
+@app.get("/life-stage/{asin}")
+def life_stage(asin: str, persona: str = "rahul"):
+    """Time-triggered resell signal (MT12 NEW 1): how far a product the persona owns
+    is through its typical life-stage, with a derived current value + ₹/month decay.
+    The time-based twin of the demand radar — nudges BEFORE a buyer searches."""
+    result = lifestage_mod.life_stage(asin, persona=persona)
+    if result is None:
+        raise HTTPException(status_code=404, detail="asin not in catalog")
+    return result
+
+
 @app.get("/second-life/{asin}")
 def second_life(asin: str):
     """Buyer PDP: recovered units of this product on offer near the shopper
@@ -321,6 +333,9 @@ class ResellListIn(BaseModel):
     persona: str = Field(default="rahul", max_length=20)
     ask_price: int = Field(..., ge=1, le=10_000_000)
     range_km: int = Field(default=7, ge=1, le=50)
+    # Optional condition report carried onto the listing (MT12 NEW 12).
+    grade: str | None = Field(default=None, max_length=2)
+    confidence: float | None = Field(default=None, ge=0, le=1)
 
 
 class InterestIn(BaseModel):
@@ -343,9 +358,20 @@ def resell_quote(body: ResellQuoteIn):
 
 @app.post("/resell/listings")
 def resell_create(body: ResellListIn):
-    result = resell_mod.create_listing(body.item_id, body.persona, body.ask_price, body.range_km)
+    result = resell_mod.create_listing(body.item_id, body.persona, body.ask_price, body.range_km,
+                                       grade=body.grade, confidence=body.confidence)
     if result is None:
         raise HTTPException(status_code=404, detail="item not found")
+    return result
+
+
+@app.post("/resell/from-route/{item_id}")
+def resell_from_route(item_id: str):
+    """MT12 NEW 9 — list a graded return on the Flash-deals board when its VRS winner
+    is local_p2p. Returns the listing, or 409 if the item isn't routed to local_p2p."""
+    result = resell_mod.list_from_route(item_id)
+    if result is None:
+        raise HTTPException(status_code=409, detail="item not routed to local_p2p")
     return result
 
 

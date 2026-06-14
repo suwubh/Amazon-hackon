@@ -35,6 +35,9 @@ Body: `{"item_id": "SL-001", "force_cached": false}` — photos come from the se
   "usage_detected": true,
   "confidence": 0.91,
   "justification": "Light, even wear consistent with brief indoor use; structurally like-new.",
+  "catalog_matches_day0": {"verified": true, "confidence": 0.95},
+  "fault_attribution": "none",
+  "returnable": true,
   "needs_human_review": false,
   "review_reason": null,
   "source": "live-gemini",
@@ -45,6 +48,7 @@ Body: `{"item_id": "SL-001", "force_cached": false}` — photos come from the se
 ```
 Side effect: appends `GRADED` passport event.
 **Trust gate:** `needs_human_review` is `true` when the grade is not safe to trust on its own — `same_unit.verified == false` (different/unknown product), OR `same_unit.confidence < 0.50`, OR overall `confidence < 0.70`. `review_reason` is a one-line human-readable reason (or `null`). The gate does **not** block routing — the spine still flows; the frontend shows the warning. This is what stops a random/mismatched photo from passing as a clean letter grade.
+**MT12 NEW 10 — two-way fault attribution:** the grade now carries a second identity check, `catalog_matches_day0` (does the seller's catalog photo match the day-0 unit), alongside `same_unit` (does the returned/current unit match day-0). From the two, `fault_attribution` ∈ `{none, seller, customer}` and `returnable` (bool): catalog ≠ day-0 → **seller** fault (mis-listed; buyer can still return); catalog == day-0 but current ≠ day-0 → **customer** fault (`returnable: false` + flagged for review). `catalog_matches_day0` is optional in the model output (absence = matches); the derived `fault_attribution`/`returnable`/`needs_human_review` are computed server-side, so cached and live behave identically.
 
 ## POST /route
 Body: `{"item_id": "SL-001"}` (requires a prior grade; `409 {"detail": "grade required"}` otherwise).
@@ -141,6 +145,9 @@ A persona's order history with a `resellable` flag (true when the ASIN has dorma
 → `200 {"persona": "rahul", "orders": [{"order_id": "171-7781002-RH04", "asin": "B0KURTA01", "title": "Vastram Men's Cotton Kurta (Navy Blue)", "purchase_date": "2026-06-09", "price_paid": 899, "status": "delivered", "return_window_open": true, "return_by": "2026-06-19", "days_left": 6, "item_id": "SL-003", "resellable": false}, {"order_id": "171-8835520-SL002", "asin": "B0MONITOR1", "purchase_date": "2024-11-02", "return_window_open": false, "return_by": "2024-11-12", "days_left": 0, "item_id": "SL-002", "resellable": true}]}`
 Stateless read. Backed by `seed/orders.json → {persona}_order_history` + `orders.py`.
 
+## GET /life-stage/{asin}?persona=  *(MT12 NEW 1 — time-triggered resell signal)*
+The time-based twin of the demand radar: how far a product the persona owns is through its typical life-*stage*, with a **derived** forward value projection. `404` if the ASIN isn't in the catalog. → `200 {"asin": "B0MONITOR1", "persona": "rahul", "title": "...", "category": "electronics", "purchase_date": "2024-11-02", "months_owned": 19, "typical_life_months": 18, "stage_label": "baby-gear stage", "stage_pct": 100, "past_typical_life": true, "current_value": 978, "decay_per_month": 68, "due_to_resell": true}`. `months_owned` is computed from the owner's real purchase date (order history); `current_value`/`decay_per_month` come from `pricing.resale_value` (auditable — no hardcoded "₹X/month"). The stage curve is seeded (`seed/lifestage_curves.json`: per-category `typical_life_months` + `asin_overrides`, e.g. a baby monitor → baby-gear). **The hero resell notification body is now rendered from this payload** (`GET /notifications/{persona}` enriches `kind:"resell"` notes with a `life_stage` block), retiring the old hardcoded "idle 19 months" string.
+
 ## GET /second-life/{asin}  *(MT11 — buyer-side BUY moment)*
 Recovered units of a product on offer **near the shopper**, surfaced on the normal PDP (the "layer, not app" twin — the buyer meets a Second Life unit in the regular buy flow, not a separate storefront). `price` is computed by the same pricing engine the sell side uses (`pricing.resale_value` at the offer's grade + local demand multiplier); `grade`/`distance_km`/`eta`/`item_id` are seeded facts (`seed/second_life_offers.json`) about each nearby unit. Returns an **empty `offers` list** for a catalog product with no nearby inventory; `404` for an unknown ASIN. Stateless read.
 → `200 {"asin": "B0SHOE500", "title": "Aurelle Women's Running Shoes", "offers": [{"item_id": "SL-001", "grade": "C", "price": 238, "distance_km": 2.7, "eta": "Pickup today"}, {"item_id": "SL-001", "grade": "D", "price": 132, "distance_km": 5.6, "eta": "Delivery tomorrow"}]}` (nearest first).
@@ -162,6 +169,8 @@ In-memory **per-Lambda-instance** marketplace (seeded with 2 starter listings so
 - `POST /resell/listings/{id}/interest` body `{"buyer_name": "..."?, "distance_km": 2.4?, "offer": 1000?}` (all optional — auto-filled from a buyer pool, offer defaults to the ask) → the updated listing with the new interest appended (`{"interest_id": "IN-001", "buyer_name": "...", "distance_km": 2.4, "offer": 1000, "status": "pending", "ts": "..."}`).
 - `POST /resell/listings/{id}/sell` body `{"interest_id": "IN-001"}` *(MT10.1)* → the reseller accepts that buyer. Listing flips to `status: "sold"`, `sold_to` = that interest (now `status: "accepted"`), other pending interests → `passed`, and `net_earned` = `offer − delivery_cut` is added. `404` if the listing or interest is unknown.
 - `POST /resell/listings/{id}/decline` body `{"interest_id": "IN-001"}` *(MT10.1)* → marks that interest `status: "declined"`; the listing stays `active` for other buyers. `404` if unknown. Listings now also carry `status` (`active`/`sold`) and `sold_to` (null until sold).
+- **MT12 NEW 9/12:** listings now also carry `grade`, `confidence`, and `source` (`"resell"` for a neighbour listing, `"return"` for a graded warehouse return). `POST /resell/listings` accepts optional `grade`/`confidence`; the Flash-deal detail view renders the condition report before a buyer expresses interest.
+- `POST /resell/from-route/{item_id}` *(MT12 NEW 9)* → lists a graded return on the public board when its VRS winner is `local_p2p` (price = the engine's `resale_value`, `grade`/`confidence` from the GRADED event, `owner: "Amazon · Returned"`, `source: "return"`). Idempotent per item. `409` if the item isn't routed to `local_p2p`.
 
 ## GET /cart/{persona}  *(MT9 — buyer storefront)*
 The persona's cart (per-Lambda-instance overlay, seeded from `seed/buyer.json`; a cold start resets to the seed). Total + count are computed server-side. `404` if the persona has no seeded storefront.

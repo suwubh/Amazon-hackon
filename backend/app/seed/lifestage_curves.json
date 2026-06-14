@@ -1,0 +1,18 @@
+{
+  "comment": "Per-category product life-STAGE curves (MT12 NEW 1) — the time-based twin of the demand radar. typical_life_months = when a product typically reaches the end of its useful stage for the owner (a baby outgrows gear, a phone hits its refresh cycle). Used by lifestage.py to decide when to nudge the owner to resell BEFORE a buyer searches, with a forward value projection. Value + ₹/month decay are NOT baked here — they're derived from pricing.py over the real purchase date (auditable). asin_overrides re-key specific products to a more accurate stage (e.g. a baby monitor is baby-gear, not generic electronics).",
+  "categories": {
+    "electronics": {"typical_life_months": 30, "stage_label": "tech refresh cycle"},
+    "appliances": {"typical_life_months": 60, "stage_label": "appliance lifespan"},
+    "apparel": {"typical_life_months": 18, "stage_label": "wardrobe cycle"},
+    "footwear": {"typical_life_months": 14, "stage_label": "wear-out cycle"},
+    "books": {"typical_life_months": 5, "stage_label": "read-once window"},
+    "home": {"typical_life_months": 36, "stage_label": "household cycle"},
+    "bags": {"typical_life_months": 24, "stage_label": "carry cycle"},
+    "baby": {"typical_life_months": 18, "stage_label": "baby-gear stage"}
+  },
+  "asin_overrides": {
+    "B0MONITOR1": "baby",
+    "B0STRLLR03": "baby",
+    "B0CRIB0042": "baby"
+  }
+}

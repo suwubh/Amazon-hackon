@@ -21,7 +21,6 @@ const MAX_IMAGES = 3;
 export default function ItemIntro({ item, scanning, onScan, onBack }) {
   const id = item.item_id;
   const day0 = [`/items/${id}/day0_1.jpg`, `/items/${id}/day0_2.jpg`];
-  const seededCurrent = `/items/${id}/current_1.jpg`;
   const ord = item.order || {};
 
   const [images, setImages] = useState([]); // [{ b64, preview }]
@@ -55,11 +54,11 @@ export default function ItemIntro({ item, scanning, onScan, onBack }) {
       <TopBar title="Returns desk · scan station" subtitle={item.title} onBack={onBack} right={<SLBadge />} />
 
       <p className="text-[13px] text-sl-muted leading-relaxed mb-4 max-w-2xl">
-        The delivery agent scans the unit at handoff. Capture its{" "}
-        <span className="text-sl-ink font-600">current condition</span> on the right — the AI grades
-        those photos against the <span className="text-sl-ink font-600">day-0 baseline</span> on file,
-        so the score is about <span className="text-sl-ink font-600">this exact unit</span>, not a
-        generic catalog photo.
+        The returns agent scans the unit at handoff. <span className="text-sl-ink font-600">Upload its
+        current condition</span> on the right — the AI grades those photos against the{" "}
+        <span className="text-sl-ink font-600">day-0 baseline the seller clicked at listing</span>, so the
+        score is about <span className="text-sl-ink font-600">this exact unit</span>, not a generic
+        catalog photo.
       </p>
 
       <div className="grid gap-4 md:grid-cols-2 items-start">
@@ -80,8 +79,8 @@ export default function ItemIntro({ item, scanning, onScan, onBack }) {
               ))}
             </div>
             <p className="mt-2.5 text-[12px] text-sl-muted leading-relaxed">
-              Catalog + the photos captured the day it was delivered. The AI grades wear{" "}
-              <span className="text-sl-ink font-600">against these</span>.
+              Catalog + the photos <span className="text-sl-ink font-600">clicked by the seller</span> at
+              listing. The AI grades wear <span className="text-sl-ink font-600">against these</span>.
             </p>
           </div>
 
@@ -112,13 +111,19 @@ export default function ItemIntro({ item, scanning, onScan, onBack }) {
             {heroPreview ? (
               <img src={heroPreview} alt="Uploaded current condition" className="w-full h-64 object-cover" />
             ) : (
-              <Thumb src={seededCurrent} alt={`${item.title} — current condition on file`} category={item.category} className="w-full h-64" glyphScale={3} />
+              <div className="w-full h-64 grid place-items-center text-center px-6">
+                <div className="text-white/70">
+                  <div className="mx-auto mb-2 w-10 h-10 rounded-full bg-white/10 grid place-items-center"><UploadIcon /></div>
+                  <p className="text-[13px] font-700 text-white/90">Upload the unit’s current photos</p>
+                  <p className="text-[11.5px] text-white/55 mt-0.5">The AI grades what you upload — nothing on file is used.</p>
+                </div>
+              </div>
             )}
             <Corners />
             {scanning && <ScanSweep />}
             <div className="absolute left-3 top-3">
               <span className="rounded-md bg-black/55 backdrop-blur text-white text-[10px] font-700 px-2 py-1 tracking-wide">
-                CURRENT CONDITION {hasUpload ? "· UPLOADED" : "· ON FILE"}
+                CURRENT CONDITION {hasUpload ? "· UPLOADED" : "· AWAITING UPLOAD"}
               </span>
             </div>
             {scanning && <ScanCaptions />}
@@ -177,18 +182,19 @@ export default function ItemIntro({ item, scanning, onScan, onBack }) {
           <p className="text-[11.5px] text-sl-muted leading-relaxed px-1">
             {hasUpload
               ? "Grading your uploaded photos live against the day-0 baseline."
-              : "No upload — the AI will grade the unit’s photos on file. Upload to grade a live capture."}
+              : "Upload at least one current photo to grade this unit."}
           </p>
         </div>
       </div>
 
       <FooterAction
         variant="green"
-        onClick={() => onScan(images.map((im) => im.b64))}
+        onClick={() => onScan(images.map((im) => im.b64), images.map((im) => im.preview))}
+        disabled={!hasUpload}
         loading={scanning}
-        hint={scanning ? undefined : hasUpload ? "Nova-2 multimodal · grades your photos in ~2s" : "Nova-2 multimodal · grades in ~2s"}
+        hint={scanning ? undefined : hasUpload ? "Nova-2 multimodal · grades your photos in ~2s" : "Upload a photo to enable grading"}
       >
-        {scanning ? "Scanning…" : hasUpload ? "Run AI grade on uploaded photos" : "Run Second Life AI scan"}
+        {scanning ? "Scanning…" : hasUpload ? "Run AI grade on uploaded photos" : "Upload to grade"}
       </FooterAction>
     </div>
   );

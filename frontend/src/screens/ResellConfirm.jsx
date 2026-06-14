@@ -115,8 +115,8 @@ export default function ResellConfirm({ order, item, busy, quotePreview, onGrade
           </div>
           <p className="mt-2 text-[11.5px] text-sl-muted leading-relaxed px-1">
             {images.length
-              ? "Nova-2 grades your photos live → a fair resale price."
-              : "No upload? We’ll grade the photos on file at a like-new floor."}
+              ? "Nova-2 grades your photos live → a fair resale price. We verify it’s the item you bought."
+              : "Upload at least one photo of the actual unit — we grade it and confirm it matches your order."}
           </p>
         </div>
       )}
@@ -129,10 +129,11 @@ export default function ResellConfirm({ order, item, busy, quotePreview, onGrade
         <FooterAction
           variant="green"
           onClick={() => onGrade(images.map((im) => im.b64))}
+          disabled={images.length === 0}
           loading={busy}
-          hint={busy ? undefined : "AI sets the price from the condition"}
+          hint={busy ? undefined : images.length ? "AI sets the price from the condition" : "Upload a photo to continue"}
         >
-          {busy ? "Pricing…" : "Get AI price"}
+          {busy ? "Pricing…" : images.length ? "Get AI price" : "Upload to continue"}
         </FooterAction>
       )}
     </div>

@@ -15,18 +15,22 @@ from __future__ import annotations
 import random
 from datetime import datetime, timezone
 
-from . import pricing, seed
+from . import passport, pricing, seed
 
 RANGE_TIERS_KM = [3, 7, 15]
 DELIVERY_BASE = 25      # ₹ flat
 DELIVERY_PER_KM = 6     # ₹ per km of reach (Amazon's cut grows with distance)
 
-# Seeded starter listings so the board isn't empty before Rahul lists.
+# Seeded starter listings so the board isn't empty before Rahul lists. Each carries
+# a grade + confidence so the Flash-deal detail view (MT12 NEW 12) always has a
+# condition report to show before a buyer expresses interest.
 _STARTER = [
     {"item_id": "SL-006", "asin": "B0HDPHN880", "title": "SonicWave ANC Headphones",
-     "thumb": "/items/SL-006/current_1.jpg", "ask_price": 2600, "range_km": 7, "owner": "Sneha K."},
+     "thumb": "/items/SL-006/current_1.jpg", "ask_price": 2600, "range_km": 7, "owner": "Sneha K.",
+     "grade": "B", "confidence": 0.9, "source": "resell", "category": "electronics"},
     {"item_id": "SL-008", "asin": "B0BCKPCK19", "title": "TrailMate 28L Backpack",
-     "thumb": "/items/SL-008/current_1.jpg", "ask_price": 850, "range_km": 7, "owner": "Arjun M."},
+     "thumb": "/items/SL-008/current_1.jpg", "ask_price": 850, "range_km": 7, "owner": "Arjun M.",
+     "grade": "A", "confidence": 0.95, "source": "resell", "category": "bags"},
 ]
 _INTEREST_POOL = [
     ("Asha D.", 2.4), ("Nikhil R.", 3.6), ("Farah S.", 1.8), ("Imran K.", 4.1),
@@ -91,7 +95,9 @@ def _store() -> dict[str, dict]:
     return _LISTINGS
 
 
-def create_listing(item_id: str, persona: str, ask_price: int, range_km: int) -> dict | None:
+def create_listing(item_id: str, persona: str, ask_price: int, range_km: int, *,
+                   grade: str | None = None, confidence: float | None = None,
+                   source: str = "resell") -> dict | None:
     global _seq
     item = seed.get_item(item_id)
     if item is None:
@@ -111,12 +117,41 @@ def create_listing(item_id: str, persona: str, ask_price: int, range_km: int) ->
         "delivery_cut": _delivery_cut(range_km),
         "net": ask_price - _delivery_cut(range_km),
         "owner": persona,
+        # Condition report carried on the listing so a buyer sees the AI grade +
+        # confidence BEFORE expressing interest (MT12 NEW 12). source distinguishes
+        # a neighbour resell from a graded warehouse return (MT12 NEW 9).
+        "grade": grade,
+        "confidence": confidence,
+        "source": source,
         "status": "active",
         "sold_to": None,
         "interests": [],
         "created_ts": datetime.now(timezone.utc).isoformat(),
     }
     return store[lid]
+
+
+def list_from_route(item_id: str, owner: str = "Amazon · Returned") -> dict | None:
+    """MT12 NEW 9 — when a returned item is graded on the Ops desk and the VRS winner
+    is local_p2p, surface it on the public Flash-deals board alongside neighbour
+    resells. Price = the engine's resale_value (the buyer-facing fair price), grade +
+    confidence from the GRADED event. Idempotent per item (won't double-list)."""
+    item = seed.get_item(item_id)
+    if item is None:
+        return None
+    routed = passport.latest_event(item_id, "ROUTED")
+    if routed is None or routed["data"].get("decision") != "local_p2p":
+        return None
+    store = _store()
+    for l in store.values():
+        if l.get("source") == "return" and l.get("item_id") == item_id and l["status"] == "active":
+            return l  # already on the board
+    graded = passport.latest_event(item_id, "GRADED")
+    gdata = graded["data"] if graded else {}
+    ask = routed["data"].get("resale_value") or item["mrp"]
+    return create_listing(item_id, owner, int(ask), 7,
+                          grade=gdata.get("grade"), confidence=gdata.get("confidence"),
+                          source="return")
 
 
 def list_listings() -> dict:

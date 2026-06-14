@@ -13,7 +13,7 @@ const FIT_ASINS = new Set(["B0SHOE500", "B0KURTA01"]);
 
 export default function BuyerStore({
   items, cart, cartLoading, orders, ordersLoading, notifications, notifLoading,
-  busy, tab, onTab, onOpenPdp, onResell, onReturn, onCheckout, onNotif, onBack,
+  busy, tab, onTab, onOpenPdp, onResell, onReturn, onReplace, onCheckout, onNotif, onBack,
   onFlash, onResells,
 }) {
   const cartCount = cart?.count || 0;
@@ -34,7 +34,7 @@ export default function BuyerStore({
 
       {tab === "shop" && <Shop items={items} onOpenPdp={onOpenPdp} />}
       {tab === "cart" && <Cart cart={cart} loading={cartLoading} busy={busy} onCheckout={onCheckout} onShop={() => onTab("shop")} />}
-      {tab === "orders" && <Orders orders={orders} loading={ordersLoading} busy={busy} onResell={onResell} onReturn={onReturn} />}
+      {tab === "orders" && <Orders orders={orders} loading={ordersLoading} busy={busy} onResell={onResell} onReturn={onReturn} onReplace={onReplace} />}
       {tab === "flash" && onFlash}
       {tab === "resells" && onResells}
       {tab === "notifications" && <Notifications list={notifications} loading={notifLoading} busy={busy} onNotif={onNotif} />}
@@ -138,7 +138,7 @@ function Cart({ cart, loading, busy, onCheckout, onShop }) {
   );
 }
 
-function Orders({ orders, loading, busy, onResell, onReturn }) {
+function Orders({ orders, loading, busy, onResell, onReturn, onReplace }) {
   if (loading) return <Center><Spinner /></Center>;
   return (
     <div className="grid gap-3 md:grid-cols-2 anim-fade-up">
@@ -152,16 +152,25 @@ function Orders({ orders, loading, busy, onResell, onReturn }) {
               <p className="text-[11.5px] text-sl-muted mt-0.5">Paid {inr(o.price_paid)}</p>
             </div>
           </div>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 space-y-2">
+            {/* Return + Replace (within the return window), then Resell (NEW 4) */}
             {o.return_window_open ? (
-              <button
-                onClick={() => onReturn(o)}
-                className="flex-1 h-9 rounded-lg text-[12.5px] font-700 bg-white text-sl-ink ring-1 ring-sl-line hover:bg-sl-paper transition active:scale-[0.98]"
-              >
-                Return or replace · {o.days_left}d left
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onReturn(o)}
+                  className="flex-1 h-9 rounded-lg text-[12.5px] font-700 bg-white text-sl-ink ring-1 ring-sl-line hover:bg-sl-paper transition active:scale-[0.98]"
+                >
+                  Return · {o.days_left}d
+                </button>
+                <button
+                  onClick={() => onReplace(o)}
+                  className="flex-1 h-9 rounded-lg text-[12.5px] font-700 bg-white text-sl-ink ring-1 ring-sl-line hover:bg-sl-paper transition active:scale-[0.98]"
+                >
+                  Replace
+                </button>
+              </div>
             ) : (
-              <span className="flex-1 h-9 rounded-lg text-[11px] font-600 text-sl-muted bg-sl-paper ring-1 ring-sl-line grid place-items-center text-center px-1 leading-tight">
+              <span className="h-9 rounded-lg text-[11px] font-600 text-sl-muted bg-sl-paper ring-1 ring-sl-line grid place-items-center text-center px-1 leading-tight">
                 Return window closed{o.return_by ? ` · ${fmtDate(o.return_by)}` : ""}
               </span>
             )}
@@ -169,13 +178,13 @@ function Orders({ orders, loading, busy, onResell, onReturn }) {
               <button
                 onClick={() => onResell(o)}
                 disabled={busy}
-                className="flex-1 h-9 rounded-lg text-[12.5px] font-800 bg-sl-green text-white hover:bg-sl-green-deep transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-1.5"
+                className="w-full h-9 rounded-lg text-[12.5px] font-800 bg-sl-green text-white hover:bg-sl-green-deep transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-1.5"
               >
                 {busy && <Spinner className="w-3.5 h-3.5" />}
                 Resell on Second Life
               </button>
             ) : (
-              <span className="flex-1 h-9 rounded-lg text-[11px] font-600 text-sl-muted bg-sl-paper ring-1 ring-sl-line grid place-items-center">
+              <span className="w-full h-9 rounded-lg text-[11px] font-600 text-sl-muted bg-sl-paper ring-1 ring-sl-line grid place-items-center">
                 No local demand yet
               </span>
             )}

@@ -1,7 +1,7 @@
 {
-  "comment": "Per-persona past sized purchases for personalized fit advice (MT10 Fix 3). Matched by brand (first word of an item title) or category. fit_outcome in {fit_true, ran_small, ran_large}. Backs the `personal` block in GET /size-advice/{asin}?persona=...",
+  "comment": "Per-persona past sized purchases for personalized fit advice (MT10 Fix 3). Matched by brand (first word of an item title) or category. fit_outcome in {fit_true, ran_small, ran_large}. Backs the `personal` block in GET /size-advice/{asin}?persona=... MT12 NEW 2: every title here also appears as a row in orders.json rahul_order_history (so 'you earlier bought this' resolves to a real order). MT12 NEW 3: brands are distinct/editable — Stride (past) vs Aurelle (the shoe PDP) makes the cross-brand sizing story land.",
   "rahul": [
     {"brand": "Vastram", "category": "apparel", "size": "M", "fit_outcome": "fit_true", "title": "Vastram Linen Shirt"},
-    {"brand": "Aurelle", "category": "footwear", "size": "UK 8", "fit_outcome": "ran_small", "title": "Aurelle Trail Sneakers"}
+    {"brand": "Stride", "category": "footwear", "size": "UK 8", "fit_outcome": "ran_small", "title": "Stride Trail Sneakers"}
   ]
 }

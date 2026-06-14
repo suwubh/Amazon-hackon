@@ -11,7 +11,7 @@ from __future__ import annotations
 import copy
 import random
 
-from . import seed
+from . import lifestage, seed
 
 # persona -> mutable cart lines, lazily seeded from buyer.json on first read.
 _CARTS: dict[str, list[dict]] = {}
@@ -68,11 +68,37 @@ def add_to_cart(persona: str, asin: str, size: str | None = None, qty: int = 1) 
     return _shape(persona.lower(), lines)
 
 
+def _enrich_resell(persona: str, n: dict) -> dict:
+    """A 'resell' notification is the life-stage nudge: its 'idle N months / value
+    dropping ₹X/month' copy is DERIVED from lifestage.py over the owner's real
+    purchase date — not a hardcoded string. Falls back to the seeded body if the
+    asin has no curve. Carries the life_stage block so the figures are inspectable."""
+    asin = n.get("asin")
+    if not asin:
+        return n
+    ls = lifestage.life_stage(asin, persona)
+    if ls is None:
+        return n
+    buyers = seed.demand_point().get("buyers_waiting", 0)
+    query = seed.demand_point().get("query", "this")
+    body = (
+        f"Idle {ls['months_owned']} months — past its typical "
+        f"{ls['typical_life_months']}-month {ls['stage_label']}. "
+        f"Worth about ₹{ls['current_value']:,} now, dropping ~₹{ls['decay_per_month']:,}/month. "
+        f"{buyers} buyers searching “{query}” nearby — resell on Second Life?"
+    )
+    return {**n, "body": body, "life_stage": ls}
+
+
 def get_notifications(persona: str) -> dict | None:
     data = seed.buyer_data(persona)
     if data is None:
         return None
-    return {"persona": persona.lower(), "notifications": data.get("notifications", [])}
+    notes = [
+        _enrich_resell(persona, n) if n.get("kind") == "resell" else n
+        for n in data.get("notifications", [])
+    ]
+    return {"persona": persona.lower(), "notifications": notes}
 
 
 def checkout(persona: str, confirm: bool = False) -> dict | None:

@@ -53,6 +53,8 @@ export const api = {
     req(`/size-advice/${asin}${persona ? `?persona=${persona}` : ""}`),
   sellerReturns: () => req("/seller/returns"),
   orders: (persona) => req(`/orders/${persona}`),
+  // MT12 NEW 1 — time-triggered resell signal (life-stage curve + derived decay).
+  lifeStage: (asin, persona) => req(`/life-stage/${asin}${persona ? `?persona=${persona}` : ""}`),
   // MT11 — buy-side: recovered units of an ASIN on offer near the shopper, shown
   // on the PDP. Stateless read (price from the engine, grade/distance seeded).
   secondLife: (asin) => req(`/second-life/${asin}`),
@@ -61,6 +63,8 @@ export const api = {
   addReturn: (body) => req("/returns", { method: "POST", body }),
   resellQuote: (body) => req("/resell/quote", { method: "POST", body }),
   createListing: (body) => req("/resell/listings", { method: "POST", body }),
+  // MT12 NEW 9 — list a graded return on the Flash-deals board (409 if not local_p2p).
+  listFromRoute: (id) => req(`/resell/from-route/${id}`, { method: "POST", body: {} }),
   listings: () => req("/resell/listings"),
   listing: (id) => req(`/resell/listings/${id}`),
   addInterest: (id, body = {}) => req(`/resell/listings/${id}/interest`, { method: "POST", body }),

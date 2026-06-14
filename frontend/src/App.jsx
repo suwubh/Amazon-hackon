@@ -22,6 +22,7 @@ import SellerDashboard from "./screens/SellerDashboard";
 import ResellConfirm from "./screens/ResellConfirm";
 import ResellPrice from "./screens/ResellPrice";
 import FlashDeals from "./screens/FlashDeals";
+import FlashDealDetail from "./screens/FlashDealDetail";
 import MyResells from "./screens/MyResells";
 
 // Each inbox item drives a dedicated flow. SL-001 is the ⭐ spine; the rest are
@@ -90,6 +91,8 @@ export default function App() {
   const [item, setItem] = useState(null);
   const [lane, setLane] = useState("spine");
   const [grade, setGrade] = useState(null);
+  const [gradePreviews, setGradePreviews] = useState([]); // uploaded current-photo previews (NEW 6)
+  const [flashListing, setFlashListing] = useState(null); // NEW 12 flash-deal detail
   const [route, setRoute] = useState(null);
   const [cascade, setCascade] = useState(null); // MT8 derived waterfall
   const [card, setCard] = useState(null);
@@ -143,6 +146,7 @@ export default function App() {
 
   function resetItemState() {
     setGrade(null);
+    setGradePreviews([]);
     setRoute(null);
     setCascade(null);
     setCard(null);
@@ -212,15 +216,16 @@ export default function App() {
   }
 
   // --- spine (SL-001) ---
-  async function runScan(currentImages) {
+  async function runScan(currentImages, previews) {
     setErr(null);
     setBusy(true);
     try {
       const g = await api.grade(item.item_id, forceCached, currentImages);
       setGrade(g);
+      setGradePreviews(previews || []); // NEW 6 — show the UPLOADED photos on the grade screen
       setScreen("grade");
     } catch (e) {
-      setErr({ message: `Grading failed (${e.detail || e.message}).`, retry: () => runScan(currentImages) });
+      setErr({ message: `Grading failed (${e.detail || e.message}).`, retry: () => runScan(currentImages, previews) });
     } finally {
       setBusy(false);
     }
@@ -236,6 +241,11 @@ export default function App() {
       // Derived terminal-state cascade (MT8) — non-blocking so the route screen
       // never waits on it; the strip fills in when it lands.
       api.cascadeSafe(item.item_id, forceCached).then(setCascade).catch(() => {});
+      // NEW 9 — a graded return whose winner is local_p2p also lists on the public
+      // Flash-deals board (best-effort, non-blocking). Ops/returns lane only.
+      if (origin === "ops" && r.decision === "local_p2p") {
+        api.listFromRoute(item.item_id).catch(() => {});
+      }
     } catch (e) {
       setErr({ message: `Routing failed (${e.detail || e.message}).`, retry: runRoute });
     } finally {
@@ -489,6 +499,22 @@ export default function App() {
     }).catch(() => {});
   }
 
+  // NEW 4 — Replace: the simple path (no grading/pricing). The old unit is collected
+  // and a replacement ships; the order row stays actionable (no flip to "Done").
+  function replaceOrder(order) {
+    setToast({
+      title: "Pickup arranged",
+      message: `${order.title} — we’ll collect the old unit and ship your replacement. No charge.`,
+    });
+  }
+
+  // NEW 12 — open a Flash-deal into its condition detail (photos + AI grade) before
+  // a buyer expresses interest.
+  function openFlashDetail(listing) {
+    setFlashListing(listing);
+    setScreen("flashDetail");
+  }
+
   // MT10 — the ONE resell path: order-history Resell AND the notification nudge both
   // run this — confirm sheet → photo → AI price → price/range → list on Flash deals.
   async function startResell(order) {
@@ -521,6 +547,15 @@ export default function App() {
       // Grade the uploaded photos (respects the LIVE/CACHED toggle; live falls back
       // to Gemini→cache so it never hard-fails). The grade drives the resale price.
       const g = await api.grade(resellItem.item_id, forceCached, currentImages);
+      // NEW 11 — block a mismatched item: if the uploaded photos aren't the unit the
+      // seller bought (or it's customer-fault), don't advance to pricing.
+      if (g.same_unit?.verified === false || g.fault_attribution === "customer") {
+        setToast({
+          title: "This doesn’t look like your item",
+          message: "The photos don’t match the unit you bought, so it can’t be listed. Re-upload photos of the original item.",
+        });
+        return;
+      }
       const grade = g.grade || "B";
       setResellGrade(grade);
       const q = await api.resellQuote({ item_id: resellItem.item_id, range_km: resellRange, grade });
@@ -546,7 +581,7 @@ export default function App() {
   async function resellList({ ask_price, range_km }) {
     setBusy(true);
     try {
-      await api.createListing({ item_id: resellItem.item_id, persona: me, ask_price, range_km });
+      await api.createListing({ item_id: resellItem.item_id, persona: me, ask_price, range_km, grade: resellGrade });
       setToast({
         title: "Listed on Flash deals",
         message: `${resellItem.title} · ${inr(ask_price)} — buyers within ${range_km} km can tap “I'm interested”.`,
@@ -646,9 +681,10 @@ export default function App() {
             onOpenPdp={openPdp}
             onResell={startResell}
             onReturn={returnOrder}
+            onReplace={replaceOrder}
             onCheckout={openCheckout}
             onNotif={openNotif}
-            onFlash={<FlashDeals persona={me} />}
+            onFlash={<FlashDeals persona={me} onOpen={openFlashDetail} />}
             onResells={<MyResells persona={me} onToast={setToast} />}
             onBack={goHome}
           />
@@ -707,7 +743,15 @@ export default function App() {
           <ItemIntro item={item} scanning={busy} onScan={runScan} onBack={goInbox} />
         )}
         {screen === "grade" && grade && (
-          <Grade item={item} grade={grade} routing={busy} onRoute={runRoute} onBack={() => setScreen("intro")} />
+          <Grade item={item} grade={grade} previews={gradePreviews} routing={busy} onRoute={runRoute} onBack={() => setScreen("intro")} />
+        )}
+        {screen === "flashDetail" && flashListing && (
+          <FlashDealDetail
+            listing={flashListing}
+            persona={me}
+            onToast={setToast}
+            onBack={() => { setBuyerTab("flash"); setScreen("buyer"); }}
+          />
         )}
         {screen === "route" && route && (
           <RouteScreen

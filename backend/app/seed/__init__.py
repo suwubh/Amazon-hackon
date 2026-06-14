@@ -39,6 +39,19 @@ def returns_seed() -> list[dict]:
     return RETURNS_SEED
 
 
+with open(SEED_DIR / "lifestage_curves.json", encoding="utf-8") as f:
+    _LIFESTAGE = json.load(f)
+LIFESTAGE_CATEGORIES = _LIFESTAGE["categories"]
+LIFESTAGE_OVERRIDES = _LIFESTAGE.get("asin_overrides", {})
+
+
+def lifestage_curve(asin: str, category: str | None) -> dict | None:
+    """Life-stage curve for a product: an asin override wins (a baby monitor is
+    baby-gear, not generic electronics), else the item's category curve."""
+    key = LIFESTAGE_OVERRIDES.get(asin, category)
+    return LIFESTAGE_CATEGORIES.get(key) or LIFESTAGE_CATEGORIES.get(category)
+
+
 with open(SEED_DIR / "second_life_offers.json", encoding="utf-8") as f:
     SECOND_LIFE_OFFERS = json.load(f)["offers"]
 

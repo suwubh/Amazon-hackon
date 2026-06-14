@@ -3,6 +3,10 @@
     "verified": true,
     "confidence": 1.0
   },
+  "catalog_matches_day0": {
+    "verified": true,
+    "confidence": 0.98
+  },
   "grade": "A",
   "defects": [],
   "completeness": [

@@ -24,25 +24,12 @@ export default function RouteScreen({ route, cascade, building, onHealthCard, on
 
   return (
     <div className="screen-scroll bg-sl-paper">
-      <TopBar title="Value Recovery Score" subtitle="6 paths · highest rupee wins" onBack={onBack} />
+      <TopBar title="Recovery path" subtitle="Where it goes · and what that saves" onBack={onBack} />
 
-      {/* winner hero */}
+      {/* destination hero — where it physically goes + the local-vs-warehouse swing */}
       <div className="px-4 pt-4">
-        <WinnerCard winner={winner} />
+        <DestinationHero route={route} winner={winner} warehouse={warehouse} swing={swing} />
       </div>
-
-      {/* defeat banner */}
-      {warehouse && (
-        <div className="px-4 pt-3">
-          <div className="rounded-xl bg-az-slate text-white px-3.5 py-2.5 flex items-center gap-2.5 anim-fade-up" style={{ animationDelay: "120ms" }}>
-            <span className="text-lg">⚔️</span>
-            <p className="text-[12.5px] leading-snug">
-              The warehouse route <span className="font-700 text-[#ff9b8a]">{signedInr(warehouse.recovery)}</span> — beaten by a{" "}
-              <span className="font-700 text-sl-green-soft">{inr(Math.abs(swing))} swing</span> per item.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* all six routes */}
       <div className="px-4 pt-5">
@@ -75,30 +62,62 @@ export default function RouteScreen({ route, cascade, building, onHealthCard, on
   );
 }
 
-function WinnerCard({ winner }) {
+// The destination hero (MT12 NEW 8): leads with WHERE the item physically goes, then
+// the headline ₹ swing + km saved vs the warehouse — every figure from /route.
+function DestinationHero({ route, winner, warehouse, swing }) {
   const v = Math.round(useCountUp(winner.recovery));
+  const sw = Math.round(useCountUp(swing != null ? Math.abs(swing) : 0));
   const m = META[winner.path] || { label: winner.path, glyph: "•" };
+  const localKm = winner.distance_km;
+  // Warehouse distance is API-derivable: km_saved = WAREHOUSE_KM − local leg.
+  const warehouseKm = localKm != null && route.km_saved ? route.km_saved + localKm : null;
+  const dest = winner.dark_store
+    ? `Amazon Now · ${winner.dark_store.name}`
+    : winner.path === "local_p2p"
+      ? (localKm != null ? `A local buyer · ${localKm} km away` : "A local buyer nearby")
+      : m.label;
+
   return (
-    <div className="relative rounded-2xl bg-white p-4 anim-winner overflow-hidden">
+    <div className="relative rounded-2xl bg-white shadow-card ring-1 ring-sl-line p-4 anim-winner overflow-hidden">
       <span className="absolute right-0 top-0 bg-sl-green text-white text-[10px] font-800 tracking-wider px-3 py-1 rounded-bl-xl">
         WINNER
       </span>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xl">{m.glyph}</span>
-        <span className="font-700 text-[14px] text-sl-ink">{m.label}</span>
+
+      {/* where it goes */}
+      <p className="text-[10px] font-800 uppercase tracking-wider text-sl-muted">Best recovery path · goes to</p>
+      <div className="flex items-center gap-2 mt-1">
+        <span className="text-2xl">{m.glyph}</span>
+        <span className="font-display font-800 text-[18px] text-sl-ink leading-tight">{dest}</span>
       </div>
-      <div className="flex items-end gap-2">
-        <span className="font-display font-800 text-[40px] leading-none tnum text-sl-green-deep">
-          {signedInr(v)}
-        </span>
-        <span className="text-[12px] text-sl-muted mb-1.5">recovered</span>
+
+      {/* money recovered */}
+      <div className="mt-3 flex items-end gap-2">
+        <span className="font-display font-800 text-[40px] leading-none tnum text-sl-green-deep">{signedInr(v)}</span>
+        <span className="text-[12px] text-sl-muted mb-1.5">recovered per item</span>
       </div>
-      {winner.note && (
-        <p className="mt-1.5 text-[12.5px] text-sl-green-deep font-600">
-          {winner.note}
-          {winner.distance_km != null && ` · nearest ${winner.distance_km} km`}
-        </p>
+
+      {/* old-way vs Second Life route comparison */}
+      {warehouse && (
+        <div className="mt-4 space-y-2.5">
+          <RouteLane tone="bad" label="Old way · warehouse" km={warehouseKm} value={warehouse.recovery} strike />
+          <RouteLane tone="good" label={`Second Life · ${m.label}`} km={localKm} value={winner.recovery} />
+        </div>
       )}
+
+      {/* the swing + km saved, side by side */}
+      <div className="mt-3 grid grid-cols-2 gap-2.5">
+        {swing != null && (
+          <div className="rounded-xl bg-sl-mint/60 ring-1 ring-sl-green/30 px-3 py-2.5">
+            <p className="text-[10.5px] text-sl-green-deep/80 font-700 uppercase tracking-wide">Local wins by</p>
+            <p className="font-display font-800 text-[20px] tnum text-sl-green-deep leading-tight">{inr(sw)}</p>
+          </div>
+        )}
+        <div className="rounded-xl bg-sl-mint/60 ring-1 ring-sl-green/30 px-3 py-2.5">
+          <p className="text-[10.5px] text-sl-green-deep/80 font-700 uppercase tracking-wide">Reverse freight cut</p>
+          <p className="font-display font-800 text-[20px] tnum text-sl-green-deep leading-tight">{route.km_saved} km</p>
+        </div>
+      </div>
+
       {winner.dark_store && (
         <div className="mt-2.5 inline-flex items-center gap-2 rounded-lg bg-sl-mint/60 ring-1 ring-sl-green/30 px-2.5 py-1.5">
           <span className="text-[14px]">🏪</span>
@@ -109,6 +128,37 @@ function WinnerCard({ winner }) {
         </div>
       )}
       {winner.breakdown && <Breakdown breakdown={winner.breakdown} total={winner.recovery} />}
+    </div>
+  );
+}
+
+// One lane of the route comparison: a label, a dashed distance line with a node glyph,
+// and the signed recovery for that route.
+function RouteLane({ tone, label, km, value, strike }) {
+  const good = tone === "good";
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className={`w-[88px] shrink-0 text-[11px] font-700 leading-tight ${good ? "text-sl-green-deep" : "text-sl-muted"}`}>
+        {label}
+      </span>
+      <div className="relative flex-1 h-6">
+        <span
+          className="absolute left-0 right-5 top-1/2 border-t-2 border-dashed"
+          style={{ borderColor: good ? "var(--color-sl-green)" : "var(--color-sl-line)" }}
+        />
+        <span className="absolute right-0 top-1/2 -translate-y-1/2 text-[15px]">{good ? "📍" : "🏭"}</span>
+        {km != null && (
+          <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[10px] font-600 text-sl-muted bg-white px-1">
+            {km} km
+          </span>
+        )}
+      </div>
+      <span
+        className="w-[58px] text-right shrink-0 tnum font-800 text-[13px]"
+        style={{ color: value >= 0 ? "var(--color-pos)" : "var(--color-neg)", textDecoration: strike ? "line-through" : "none" }}
+      >
+        {signedInr(value)}
+      </span>
     </div>
   );
 }

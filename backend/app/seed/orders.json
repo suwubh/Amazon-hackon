@@ -20,6 +20,8 @@
     {"order_id": "171-6722914-RH02", "asin": "B0STRLLR03", "title": "GlidePro Compact Baby Stroller", "purchase_date": "2024-09-18", "price_paid": 7499, "status": "delivered"},
     {"order_id": "171-0034187-RH03", "asin": "B0CRIB0042", "title": "DreamNest Convertible Crib", "purchase_date": "2024-08-25", "price_paid": 11999, "status": "delivered"},
     {"order_id": "171-7781002-RH04", "asin": "B0KURTA01", "title": "Vastram Men's Cotton Kurta (Navy Blue)", "purchase_date": "2026-06-09", "price_paid": 899, "status": "delivered"},
-    {"order_id": "171-5540198-RH05", "asin": "B0SHOE500", "title": "Aurelle Women's Running Shoes", "purchase_date": "2026-06-11", "price_paid": 500, "status": "delivered"}
+    {"order_id": "171-5540198-RH05", "asin": "B0SHOE500", "title": "Aurelle Women's Running Shoes", "purchase_date": "2026-06-11", "price_paid": 500, "status": "delivered"},
+    {"order_id": "171-3300011-RH06", "asin": "B0LINEN01", "title": "Vastram Linen Shirt", "category": "apparel", "purchase_date": "2026-03-04", "price_paid": 1199, "status": "delivered"},
+    {"order_id": "171-3300012-RH07", "asin": "B0STRIDE08", "title": "Stride Trail Sneakers", "category": "footwear", "purchase_date": "2026-02-15", "price_paid": 2499, "status": "delivered"}
   ]
 }
