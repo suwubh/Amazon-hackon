@@ -57,7 +57,8 @@ def put(pk: str, sk: str, data: dict) -> None:
     if t is None:
         return
     try:
-        t.put_item(Item={"item_id": pk, "ts": sk, "data": json.dumps(data)})
+        t.put_item(Item={"item_id": pk, "ts": sk, "data": json.dumps(data)}) 
+        #json.dumps() converts python dict to string so that it can be stored in dynamodb
     except Exception as e:
         log.warning("DynamoDB put failed (%s/%s): %s — in-memory store still holds it.", pk, sk, e)
 
@@ -97,7 +98,7 @@ def get(pk: str, sk: str) -> dict | None:
         if not it:
             return None
         raw = it.get("data")
-        return json.loads(raw) if raw else {}
+        return json.loads(raw) if raw else {} #convert back to python dict
     except Exception as e:
         log.warning("DynamoDB get failed (%s/%s): %s — falling back to in-memory.", pk, sk, e)
         return None
