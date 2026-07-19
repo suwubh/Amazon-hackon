@@ -71,8 +71,10 @@ def get_events(item_id: str) -> list[dict]:
 
 def _dynamo_events(item_id: str) -> list[dict]:
     """The item's events read back from DynamoDB, oldest-first. [] when the table
-    is unset or unreachable (the demo then relies on the in-memory log)."""
-    rows = store.query(item_id)
+    is unset or unreachable (the demo then relies on the in-memory log). Uses a
+    strongly-consistent read so an event written moments earlier (on this or a
+    parallel instance) is guaranteed visible — the passport is the source of truth."""
+    rows = store.query(item_id, consistent=True)
     out = [{"ts": r["sk"], "event": r["data"].get("event"), "data": r["data"].get("data", {})}
            for r in rows if r.get("data", {}).get("event")]
     out.sort(key=lambda r: r["ts"])
@@ -80,14 +82,19 @@ def _dynamo_events(item_id: str) -> list[dict]:
 
 
 def latest_event(item_id: str, event: str) -> dict | None:
-    # Fast path: the warm instance that produced the event has it in memory.
-    for record in reversed(_events.get(item_id, [])):
-        if record["event"] == event:
-            return record
-    # Miss → cold start or a parallel instance produced it. Read back from DynamoDB
-    # so the spine doesn't 409 between grade → route → health-card on an instance swap.
+    # DynamoDB-first: the passport table is the single source of truth across all
+    # Lambda instances, so a grade written on ANY instance is visible to the next
+    # route/health-card call — not just the warm instance that produced it. The read
+    # is strongly consistent (see _dynamo_events) so a just-written event can't be
+    # missed. Trades a little read latency for a globally-consistent view.
     if store.enabled():
         for record in reversed(_dynamo_events(item_id)):
             if record["event"] == event:
                 return record
+    # Fallback: the per-instance in-memory log. This is the ONLY path when DynamoDB
+    # is unconfigured/unreachable, and the safety net if a best-effort write never
+    # landed in the table but the in-memory append did.
+    for record in reversed(_events.get(item_id, [])):
+        if record["event"] == event:
+            return record
     return None
