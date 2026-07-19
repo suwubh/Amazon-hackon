@@ -63,19 +63,27 @@ def put(pk: str, sk: str, data: dict) -> None:
         log.warning("DynamoDB put failed (%s/%s): %s — in-memory store still holds it.", pk, sk, e)
 
 
-def query(pk: str) -> list[dict]:
-    """All rows under a partition, as {"sk", "data"} dicts. [] on any failure."""
+def query(pk: str, consistent: bool = False) -> list[dict]:
+    """All rows under a partition, as {"sk", "data"} dicts. [] on any failure.
+
+    consistent=True issues a strongly-consistent read: a row written moments earlier
+    is guaranteed visible (DynamoDB's default read is only eventually consistent, so
+    a read right after a write can miss it). The passport spine passes consistent=True
+    so a grade written on any instance is readable by the very next route call; it
+    costs ~2x read capacity + a little latency, so it stays opt-in per call."""
     t = _table_handle()
     if t is None:
         return []
     try:
         from boto3.dynamodb.conditions import Key
         out: list[dict] = []
-        resp = t.query(KeyConditionExpression=Key("item_id").eq(pk))
+        resp = t.query(KeyConditionExpression=Key("item_id").eq(pk),
+                       ConsistentRead=consistent)
         items = list(resp.get("Items", []))
         # paginate (demo volumes are tiny, but be correct)
         while "LastEvaluatedKey" in resp:
             resp = t.query(KeyConditionExpression=Key("item_id").eq(pk),
+                           ConsistentRead=consistent,
                            ExclusiveStartKey=resp["LastEvaluatedKey"])
             items.extend(resp.get("Items", []))
         for it in items:
