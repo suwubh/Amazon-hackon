@@ -86,4 +86,4 @@ if __name__ == "__main__":
     test_sl001_hero_golden()
     test_renewed_vs_quick_commerce_channel()
     print("VRS invariant OK: recovery == sum(breakdown) for every eligible path; "
-          "SL-001 hero golden +83 / -129 holds; electronics→Renewed, everyday→dark store.")
+          "SL-001 hero golden +83 / -129 holds; electronics->Renewed, everyday->dark store.")
