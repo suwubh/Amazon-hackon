@@ -118,7 +118,7 @@ def checkout(persona: str, confirm: bool = False) -> dict | None:
     persona = persona.lower()
     data = seed.buyer_data(persona)
     lines = _cart_lines(persona)
-    if data is None or lines is None:
+    if data is None or lines is None or not lines:
         return None
     amount = sum(l["price"] * l.get("qty", 1) for l in lines)
     order_id = "171-" + "".join(random.choices("0123456789", k=7)) + "-SL"

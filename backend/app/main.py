@@ -23,7 +23,7 @@ app = FastAPI(title="Amazon Second Life API")
 DEFAULT_ORIGINS = "http://localhost:5173,https://amazon-hackon.vercel.app"
 ALLOWED_ORIGINS = [
     o.strip()
-    for o in os.getenv("ALLOWED_ORIGINS", DEFAULT_ORIGINS).split(",")
+    for o in (os.getenv("ALLOWED_ORIGINS") or DEFAULT_ORIGINS).split(",")
     if o.strip()
 ]
 

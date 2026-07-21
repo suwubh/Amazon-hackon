@@ -88,7 +88,7 @@ def query(pk: str, consistent: bool = False) -> list[dict]:
             items.extend(resp.get("Items", []))
         for it in items:
             raw = it.get("data")
-            out.append({"sk": it.get("ts"), "data": json.loads(raw) if raw else {}})
+            out.append({"sk": it.get("ts"), "data": json.loads(raw) if isinstance(raw, str) else (raw or {})})
         return out
     except Exception as e:
         log.warning("DynamoDB query failed (%s): %s — falling back to in-memory.", pk, e)
@@ -106,7 +106,7 @@ def get(pk: str, sk: str) -> dict | None:
         if not it:
             return None
         raw = it.get("data")
-        return json.loads(raw) if raw else {} #convert back to python dict
+        return json.loads(raw) if isinstance(raw, str) else (raw or {})
     except Exception as e:
         log.warning("DynamoDB get failed (%s/%s): %s — falling back to in-memory.", pk, sk, e)
         return None
